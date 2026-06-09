@@ -223,7 +223,7 @@ else:
                 st.stop()
 
             # Initialize session if needed
-            if "session_id" not in st.session_state or st.session_state.get("filename") != fname or st.session_state.get("sheet_name") != sheet_name:
+            if "session_id" not in st.session_state or "intelligence" not in st.session_state or "df" not in st.session_state or st.session_state.get("filename") != fname or st.session_state.get("sheet_name") != sheet_name:
                 import uuid
                 from data.session_store import SessionStore
                 from data.intelligence import build_dataset_intelligence
