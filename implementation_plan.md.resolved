@@ -1,0 +1,46 @@
+# Advanced EDA Automation — Industrial-Ready Upgrade
+
+## Project Structure
+
+```
+EDA automation/
+├── app.py                  # Main Streamlit entry point (thin orchestrator)
+├── .env                    # API keys
+├── requirements.txt        # All dependencies pinned
+├── config/
+│   ├── __init__.py
+│   └── settings.py         # Constants, model configs, timeouts, system prompts
+├── core/
+│   ├── __init__.py
+│   ├── llm.py              # Ollama + NVIDIA API communication
+│   ├── context.py          # Build rich data context for LLM
+│   └── agentic.py          # Plan → Execute → Synthesize pipeline
+├── analysis/
+│   ├── __init__.py
+│   ├── features.py         # Date/interaction/imputation feature engineering
+│   ├── stats.py            # Normality, chi-square, PCA, clustering
+│   ├── anomaly.py          # NEW: Isolation Forest, Z-score, IQR
+│   └── ml.py               # NEW: Quick ML (RF, LR, XGBoost)
+├── tools/
+│   ├── __init__.py
+│   ├── code_sandbox.py     # NEW: Safe LLM code execution
+│   ├── nl_viz.py           # NEW: Natural language → chart
+│   └── report.py           # NEW: HTML report export
+└── ui/
+    ├── __init__.py
+    ├── styles.py           # CSS styling
+    ├── sidebar.py          # Sidebar components
+    └── sections.py         # All UI sections (data, stats, viz, chat, etc.)
+```
+
+## Execution Order
+
+1. requirements.txt
+2. config/settings.py
+3. core/llm.py, core/context.py, core/agentic.py
+4. analysis/features.py, analysis/stats.py
+5. analysis/anomaly.py (NEW), analysis/ml.py (NEW)
+6. tools/code_sandbox.py (NEW), tools/nl_viz.py (NEW), tools/report.py (NEW)
+7. ui/styles.py, ui/sidebar.py, ui/sections.py
+8. app.py (thin orchestrator)
+9. Verify & test

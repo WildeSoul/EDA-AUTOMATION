@@ -1,0 +1,51 @@
+CustomerID,Gender,Tenure,Contract,MonthlyCharges,TotalCharges,Churn
+7590-VHVEG,Female,1,Month-to-month,29.85,29.85,No
+5575-GNVDE,Male,34,One year,56.95,1889.5,No
+3668-QYUNU,Male,2,Month-to-month,53.85,108.15,Yes
+7795-CFOCW,Male,45,One year,42.3,1840.75,No
+9237-HQITU,Female,2,Month-to-month,70.7,151.65,Yes
+9305-CDKCW,Female,8,Month-to-month,99.65,820.5,Yes
+1452-KIOVK,Male,22,Month-to-month,89.1,1949.4,No
+6713-OKOMC,Female,10,Month-to-month,29.75,301.9,No
+7892-POOKP,Female,28,Month-to-month,104.8,3046.05,Yes
+6388-TABGU,Male,62,One year,56.15,3487.95,No
+9763-GRSJV,Male,13,Month-to-month,49.95,587.45,No
+7469-LKCVX,Female,16,Month-to-month,18.95,325.6,No
+8091-TTBJJ,Male,58,Two year,100.35,5681.1,No
+0280-XJGEX,Male,49,Month-to-month,103.7,5036.3,Yes
+5129-JPUGY,Male,25,Month-to-month,105.5,2686.05,Yes
+3655-SNQYZ,Female,69,Two year,113.25,7895.15,No
+8191-XUDQA,Female,52,One year,20.65,1022.95,No
+9959-WOFSM,Male,71,Two year,85.24,6007.4,No
+4190-MFSXT,Female,10,Month-to-month,95.2,857.25,Yes
+4183-MYRCA,Female,21,Month-to-month,90.05,1862.9,No
+7893-POOKP,Female,1,Month-to-month,105.5,105.5,Yes
+6389-TABGU,Male,12,One year,55.15,660.85,No
+9764-GRSJV,Male,4,Month-to-month,49.95,199.8,Yes
+7470-LKCVX,Female,72,Two year,24.95,1796.4,No
+8092-TTBJJ,Male,24,One year,95.35,2288.4,No
+0281-XJGEX,Male,6,Month-to-month,80.7,484.2,Yes
+5130-JPUGY,Male,36,Month-to-month,100.5,3618,No
+3656-SNQYZ,Female,1,Month-to-month,110.25,110.25,Yes
+8192-XUDQA,Female,15,Month-to-month,20.65,309.75,No
+9960-WOFSM,Male,12,Month-to-month,80.24,962.88,Yes
+4191-MFSXT,Female,48,One year,90.2,4329.6,No
+4184-MYRCA,Female,3,Month-to-month,90.05,270.15,Yes
+7894-POOKP,Female,14,Month-to-month,95.5,1337,Yes
+6390-TABGU,Male,45,Two year,65.15,2931.75,No
+9765-GRSJV,Male,30,One year,60.95,1828.5,No
+7471-LKCVX,Female,2,Month-to-month,19.95,39.9,No
+8093-TTBJJ,Male,10,Month-to-month,90.35,903.5,Yes
+0282-XJGEX,Male,18,Month-to-month,100.7,1812.6,Yes
+5131-JPUGY,Male,55,Two year,110.5,6077.5,No
+3657-SNQYZ,Female,72,Two year,115.25,8298,No
+8193-XUDQA,Female,8,Month-to-month,25.65,205.2,No
+9961-WOFSM,Male,2,Month-to-month,85.24,170.48,Yes
+4192-MFSXT,Female,24,Month-to-month,95.2,2284.8,No
+4185-MYRCA,Female,62,Two year,105.05,6513.1,No
+7895-POOKP,Female,34,One year,104.8,3563.2,No
+6391-TABGU,Male,6,Month-to-month,50.15,300.9,Yes
+9766-GRSJV,Male,72,Two year,70.95,5108.4,No
+7472-LKCVX,Female,48,One year,25.6,1228.8,No
+8094-TTBJJ,Male,60,Two year,105.35,6321,No
+0283-XJGEX,Male,2,Month-to-month,103.7,207.4,Yes

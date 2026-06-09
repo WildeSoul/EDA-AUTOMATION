@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Workspace - AI Data Analyst Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#663c92",
+                        "primary-fixed-dim": "#748cf9",
+                        "on-secondary-container": "#e3c4ff",
+                        "surface-container-highest": "#23262e",
+                        "surface-tint": "#97a9ff",
+                        "tertiary-dim": "#5bef90",
+                        "on-primary": "#002283",
+                        "secondary-fixed-dim": "#dab4ff",
+                        "on-secondary": "#42146d",
+                        "tertiary-container": "#6bfe9c",
+                        "surface-container-high": "#1d1f27",
+                        "primary-container": "#859aff",
+                        "error-container": "#a70138",
+                        "surface-variant": "#23262e",
+                        "secondary-container": "#5c3187",
+                        "error-dim": "#d73357",
+                        "surface": "#0c0e14",
+                        "on-surface": "#e5e4ed",
+                        "tertiary-fixed": "#6bfe9c",
+                        "on-tertiary": "#006834",
+                        "on-secondary-fixed": "#481c73",
+                        "on-background": "#e5e4ed",
+                        "on-error-container": "#ffb2b9",
+                        "surface-dim": "#0c0e14",
+                        "secondary": "#c99af8",
+                        "primary-dim": "#8197ff",
+                        "on-primary-fixed-variant": "#00207e",
+                        "secondary-fixed": "#e4c6ff",
+                        "primary": "#97a9ff",
+                        "inverse-on-surface": "#53555c",
+                        "secondary-dim": "#bb8de9",
+                        "on-tertiary-fixed": "#004a23",
+                        "outline": "#74757d",
+                        "background": "#0c0e14",
+                        "surface-container-lowest": "#000000",
+                        "on-surface-variant": "#aaaab3",
+                        "primary-fixed": "#859aff",
+                        "on-primary-fixed": "#000000",
+                        "inverse-primary": "#3d56c0",
+                        "tertiary-fixed-dim": "#5bef90",
+                        "surface-bright": "#292c35",
+                        "inverse-surface": "#faf8ff",
+                        "surface-container-low": "#11131a",
+                        "on-tertiary-container": "#005f2f",
+                        "on-primary-container": "#001867",
+                        "on-error": "#490013",
+                        "surface-container": "#171921",
+                        "outline-variant": "#46484f",
+                        "tertiary": "#c3ffcd",
+                        "error": "#ff6e84",
+                        "on-tertiary-fixed-variant": "#006a35"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {},
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #0c0e14; color: #e5e4ed; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Manrope', sans-serif; letter-spacing: -0.02em; }
+        .glass-panel { background: rgba(23, 25, 33, 0.7); backdrop-filter: blur(24px); border: 1px solid rgba(70, 72, 79, 0.15); }
+        .gradient-text { background: linear-gradient(135deg, #97a9ff, #c99af8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .glow-effect { box-shadow: 0 0 40px rgba(151, 169, 255, 0.15); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden antialiased text-on-surface bg-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar (Predicted) -->
+<nav class="hidden md:flex flex-col h-screen w-72 bg-slate-950/70 backdrop-blur-3xl border-r border-white/10 shadow-2xl shadow-blue-900/10 py-8 px-4 flex-shrink-0 z-50">
+<div class="mb-10 px-2 flex items-center space-x-3">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-surface-lowest text-xl" style="font-variation-settings: 'FILL' 1;">analytics</span>
+</div>
+<div>
+<h1 class="text-xl font-bold bg-gradient-to-br from-[#97a9ff] to-[#c99af8] bg-clip-text text-transparent font-headline tracking-tight">AI Data Analyst Pro</h1>
+<p class="text-[0.6875rem] text-on-surface-variant font-medium mt-0.5">Precision Intelligence</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto space-y-1">
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors duration-200 scale-95 active:scale-90 group font-inter text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">upload_file</span>
+<span>Upload</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors duration-200 scale-95 active:scale-90 group font-inter text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">data_thresholding</span>
+<span>Data Inspection</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors duration-200 scale-95 active:scale-90 group font-inter text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">analytics</span>
+<span>Statistical Profiling</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors duration-200 scale-95 active:scale-90 group font-inter text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">query_stats</span>
+<span>Advanced Analysis</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors duration-200 scale-95 active:scale-90 group font-inter text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">error_med</span>
+<span>Anomaly Detection</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors duration-200 scale-95 active:scale-90 group font-inter text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">model_training</span>
+<span>ML Modeling</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors duration-200 scale-95 active:scale-90 group font-inter text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors">terminal</span>
+<span>AI Code Lab</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-[#97a9ff] bg-white/5 font-semibold transition-colors duration-200 scale-95 active:scale-90 font-inter text-sm tracking-tight shadow-[inset_2px_0_0_0_#97a9ff]" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">workspaces</span>
+<span>AI Workspace</span>
+</a>
+</div>
+<div class="mt-auto pt-6 px-2">
+<div class="flex items-center space-x-3 p-3 rounded-xl bg-surface-container-low border border-outline-variant/15">
+<img alt="User Profile" class="w-10 h-10 rounded-full object-cover border border-outline-variant/30" data-alt="professional headshot portrait of a woman in low key cinematic lighting against dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBoL1IMXzcK4vHha67i9raOegWFmYZtA8oN7_22_ZPEEpVnhUeGlvI4VHdFKY_I4xQfJA30rx1WmlBMMILyCxAvcXk9Xy02kISVDATYcwKgv2ezOq3i56lJ5q6uM5b85r-YiJWWDSSt-wUML1yD8_L3mJQcezewabAdkiqnDanSqYLPZiJX5tdXtGjrIu-mVzGIsM2UKSUJOG5VoyU1842xrMvQfIjnv02JW2k5bBC-bMK5Snzyqg3uqxDlOdrS17PBxYFz82ue_xA"/>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium text-on-surface truncate">Dr. E. Vance</p>
+<p class="text-[0.6875rem] text-on-surface-variant truncate">Lead Analyst</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden bg-surface relative">
+<!-- Subtle Background Glow -->
+<div class="absolute top-0 left-1/4 w-1/2 h-64 bg-primary/10 blur-[120px] rounded-full pointer-events-none"></div>
+<!-- TopNavBar (Predicted) -->
+<header class="w-full h-16 sticky top-0 z-40 bg-[#0c0e14]/80 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-8 transition-opacity duration-150 flex-shrink-0">
+<div class="flex items-center space-x-6">
+<!-- Search on Left -->
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg group-focus-within:text-primary transition-colors">search</span>
+<input class="bg-surface-container-lowest border-none rounded-full py-1.5 pl-10 pr-4 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary focus:bg-surface-container-high transition-all w-64 shadow-inner" placeholder="Search workspace..." type="text"/>
+</div>
+<div class="hidden lg:flex items-center space-x-1 border-l border-outline-variant/15 pl-6">
+<a class="px-3 py-4 text-[#97a9ff] border-b border-[#97a9ff] font-inter text-xs uppercase tracking-widest hover:bg-white/5 transition-colors" href="#">Main_Dataset.csv</a>
+<a class="px-3 py-4 text-slate-400 font-inter text-xs uppercase tracking-widest hover:bg-white/5 transition-colors border-b border-transparent" href="#">GPT-4o (Cloud)</a>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<button class="bg-gradient-to-br from-[#97a9ff] to-[#c99af8] text-on-primary px-4 py-1.5 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity flex items-center space-x-2">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Download Report</span>
+</button>
+<div class="flex items-center space-x-1 pl-2">
+<button class="p-2 text-slate-400 hover:bg-white/5 rounded-full transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="p-2 text-slate-400 hover:bg-white/5 rounded-full transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Workspace Canvas -->
+<div class="flex-1 overflow-y-auto p-6 lg:p-8">
+<div class="max-w-[1600px] mx-auto h-full flex flex-col gap-6">
+<!-- Workspace Header -->
+<div class="flex items-end justify-between shrink-0 mb-2">
+<div>
+<h2 class="text-[2rem] font-headline font-bold text-on-surface leading-tight">Deep Agentic Analysis</h2>
+<p class="text-on-surface-variant text-sm mt-1 flex items-center space-x-2">
+<span class="inline-block w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(195,255,205,0.6)] animate-pulse"></span>
+<span>Session Active • GPT-4o Multi-Agent System</span>
+</p>
+</div>
+<div class="flex space-x-3">
+<button class="px-4 py-2 bg-surface-container-high text-primary rounded-xl text-sm font-medium border border-outline-variant/15 hover:bg-surface-container transition-colors flex items-center space-x-2">
+<span class="material-symbols-outlined text-[18px]">stop_circle</span>
+<span>Halt Process</span>
+</button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-0">
+<!-- Left Column: AI Chat & Agent Process (8 cols) -->
+<div class="xl:col-span-8 flex flex-col gap-6 min-h-0">
+<!-- Agent Process View -->
+<div class="glass-panel rounded-xl p-6 flex flex-col h-full border-t border-t-white/10 shrink-0">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline text-lg font-semibold text-on-surface flex items-center space-x-2">
+<span class="material-symbols-outlined text-secondary">memory</span>
+<span>Reasoning Engine</span>
+</h3>
+<span class="text-xs font-mono text-tertiary bg-tertiary/10 px-2 py-1 rounded">Execution: 42s</span>
+</div>
+<div class="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+<!-- Step 1: Planning -->
+<div class="flex space-x-4">
+<div class="flex flex-col items-center mt-1">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-tertiary/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[14px] text-tertiary">check</span>
+</div>
+<div class="w-px h-full bg-outline-variant/20 mt-2"></div>
+</div>
+<div class="flex-1 pb-6">
+<h4 class="text-sm font-medium text-on-surface mb-1">Planning...</h4>
+<p class="text-[0.875rem] text-on-surface-variant leading-relaxed">
+                                            Analyzed dataset schema. Identified target variable `customer_churn`. Selected Random Forest and Gradient Boosting models for initial baseline comparison. Structuring data preprocessing pipeline for handling missing values in `tenure` and `monthly_charges`.
+                                        </p>
+</div>
+</div>
+<!-- Step 2: Executing -->
+<div class="flex space-x-4">
+<div class="flex flex-col items-center mt-1">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-tertiary/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[14px] text-tertiary">check</span>
+</div>
+<div class="w-px h-full bg-outline-variant/20 mt-2"></div>
+</div>
+<div class="flex-1 pb-6">
+<h4 class="text-sm font-medium text-on-surface mb-1">Executing Sub-tasks...</h4>
+<div class="bg-surface-container-lowest rounded-lg p-3 mt-2 font-mono text-[0.6875rem] text-on-surface-variant border border-outline-variant/10">
+<div class="text-primary-dim">&gt; Running Feature Importance Extraction (Shapley Values)</div>
+<div>&gt; Imputing missing numericals (Strategy: Median)</div>
+<div>&gt; Encoding categorical variables (Target Encoding)</div>
+<div class="text-tertiary">&gt; Sub-tasks completed successfully. Model training initiated.</div>
+</div>
+</div>
+</div>
+<!-- Step 3: Synthesizing -->
+<div class="flex space-x-4">
+<div class="flex flex-col items-center mt-1">
+<div class="w-6 h-6 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(151,169,255,0.3)]">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+</div>
+<div class="w-px h-full bg-transparent mt-2"></div>
+</div>
+<div class="flex-1">
+<h4 class="text-sm font-medium text-primary mb-1">Synthesizing...</h4>
+<p class="text-[0.875rem] text-on-surface-variant leading-relaxed">
+                                            Aggregating model results. Generating visualization for distribution of high-risk churn profiles vs baseline...
+                                        </p>
+</div>
+</div>
+</div>
+<!-- Chat Input -->
+<div class="mt-4 pt-4 border-t border-outline-variant/15 relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl py-3 pl-4 pr-12 text-sm text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner" placeholder="Steer the analysis or ask a question..." type="text"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[20px]">send</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Code & Executive Summary (4 cols) -->
+<div class="xl:col-span-4 flex flex-col gap-6 min-h-0">
+<!-- Executive Summary Panel -->
+<div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/10 shrink-0">
+<h3 class="font-headline text-lg font-semibold text-on-surface mb-5">Executive Summary</h3>
+<div class="mb-6 flex items-center justify-between bg-surface-container px-4 py-3 rounded-lg border border-outline-variant/5">
+<span class="text-sm font-medium text-on-surface-variant">Data Quality Grade</span>
+<span class="text-xl font-headline font-bold text-tertiary drop-shadow-[0_0_4px_rgba(195,255,205,0.5)]">A-</span>
+</div>
+<div class="space-y-4">
+<div>
+<h4 class="text-[0.6875rem] uppercase tracking-widest text-on-surface-variant font-semibold mb-2">Top 3 Patterns</h4>
+<ul class="space-y-2">
+<li class="flex items-start space-x-2 text-sm text-on-surface">
+<span class="material-symbols-outlined text-[16px] text-secondary mt-0.5">insights</span>
+<span class="leading-snug">Tenure &lt; 6 months correlates heavily (r=0.68) with churn.</span>
+</li>
+<li class="flex items-start space-x-2 text-sm text-on-surface">
+<span class="material-symbols-outlined text-[16px] text-secondary mt-0.5">insights</span>
+<span class="leading-snug">'Month-to-month' contract type makes up 88% of churners.</span>
+</li>
+<li class="flex items-start space-x-2 text-sm text-on-surface">
+<span class="material-symbols-outlined text-[16px] text-secondary mt-0.5">insights</span>
+<span class="leading-snug">Absence of 'Tech Support' increases risk factor by 2.4x.</span>
+</li>
+</ul>
+</div>
+<div class="pt-2">
+<h4 class="text-[0.6875rem] uppercase tracking-widest text-on-surface-variant font-semibold mb-2">Actionable Recommendations</h4>
+<div class="bg-primary/5 border border-primary/20 rounded-lg p-3">
+<p class="text-sm text-on-surface leading-snug">
+                                            Target 'Month-to-month' customers in their first 6 months with discounted annual upgrades bundled with Tech Support.
+                                        </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Code Lab Snippet & Viz -->
+<div class="glass-panel rounded-xl border-t border-t-white/10 flex flex-col flex-1 min-h-0 overflow-hidden">
+<div class="flex items-center justify-between px-4 py-2 border-b border-outline-variant/15 bg-surface-container-highest/50">
+<span class="text-xs font-mono text-on-surface-variant">distribution_analysis.py</span>
+<div class="flex space-x-1">
+<button class="p-1 text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[16px]">content_copy</span></button>
+</div>
+</div>
+<!-- Code Editor Area -->
+<div class="p-4 bg-surface-container-lowest font-mono text-[0.8rem] overflow-y-auto custom-scrollbar flex-1 border-b border-outline-variant/15">
+<pre class="text-slate-300 leading-relaxed"><span class="text-secondary">import</span> seaborn <span class="text-secondary">as</span> sns
+<span class="text-secondary">import</span> matplotlib.pyplot <span class="text-secondary">as</span> plt
+
+<span class="text-on-surface-variant"># Visualizing tenure distribution by churn</span>
+plt.figure(figsize=(10, 6))
+sns.histplot(
+    data=df, x=<span class="text-tertiary">'tenure'</span>, 
+    hue=<span class="text-tertiary">'Churn'</span>, multiple=<span class="text-tertiary">'stack'</span>,
+    palette=[<span class="text-tertiary">'#c3ffcd'</span>, <span class="text-tertiary">'#ff6e84'</span>],
+    kde=<span class="text-secondary">True</span>, alpha=0.7
+)
+plt.title(<span class="text-tertiary">'Tenure Distribution vs Churn Risk'</span>)
+plt.style.use(<span class="text-tertiary">'dark_background'</span>)
+plt.show()</pre>
+</div>
+<!-- Chart Result Area -->
+<div class="p-4 bg-surface-container-low h-48 relative flex items-center justify-center shrink-0">
+<div class="absolute inset-0 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiM3NDc1N2QiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]"></div>
+<!-- Mock Seaborn Chart using HTML/CSS -->
+<div class="w-full h-full flex items-end justify-between px-4 pb-6 relative z-10">
+<!-- Y Axis -->
+<div class="absolute left-2 top-0 bottom-6 w-px bg-outline-variant/30"></div>
+<!-- X Axis -->
+<div class="absolute left-2 right-2 bottom-6 h-px bg-outline-variant/30"></div>
+<!-- Bars (Stacked representation) -->
+<div class="w-1/12 flex flex-col justify-end h-[90%] mr-1">
+<div class="w-full bg-error/80 h-[70%] rounded-t-sm shadow-[0_0_8px_rgba(255,110,132,0.3)]"></div>
+<div class="w-full bg-tertiary/60 h-[30%]"></div>
+</div>
+<div class="w-1/12 flex flex-col justify-end h-[75%] mr-1">
+<div class="w-full bg-error/80 h-[50%] rounded-t-sm"></div>
+<div class="w-full bg-tertiary/60 h-[50%]"></div>
+</div>
+<div class="w-1/12 flex flex-col justify-end h-[60%] mr-1">
+<div class="w-full bg-error/80 h-[30%] rounded-t-sm"></div>
+<div class="w-full bg-tertiary/60 h-[70%]"></div>
+</div>
+<div class="w-1/12 flex flex-col justify-end h-[50%] mr-1">
+<div class="w-full bg-error/80 h-[20%] rounded-t-sm"></div>
+<div class="w-full bg-tertiary/60 h-[80%]"></div>
+</div>
+<div class="w-1/12 flex flex-col justify-end h-[45%] mr-1">
+<div class="w-full bg-error/80 h-[15%] rounded-t-sm"></div>
+<div class="w-full bg-tertiary/60 h-[85%]"></div>
+</div>
+<div class="w-1/12 flex flex-col justify-end h-[60%] mr-1">
+<div class="w-full bg-error/80 h-[10%] rounded-t-sm"></div>
+<div class="w-full bg-tertiary/60 h-[90%]"></div>
+</div>
+<div class="w-1/12 flex flex-col justify-end h-[70%] mr-1">
+<div class="w-full bg-error/80 h-[5%] rounded-t-sm"></div>
+<div class="w-full bg-tertiary/60 h-[95%]"></div>
+</div>
+<div class="w-1/12 flex flex-col justify-end h-[85%]">
+<div class="w-full bg-tertiary/60 h-full rounded-t-sm"></div>
+</div>
+<!-- Simple KDE Line Overlay -->
+<svg class="absolute inset-0 w-full h-[calc(100%-1.5rem)] pointer-events-none" preserveaspectratio="none" viewbox="0 0 100 100">
+<path d="M 5,90 Q 15,10 25,25 T 50,50 T 80,30 T 95,15" fill="none" opacity="0.8" stroke="#c3ffcd" stroke-width="1.5"></path>
+<path d="M 5,20 Q 10,10 15,30 T 30,70 T 50,85 T 95,90" fill="none" opacity="0.8" stroke="#ff6e84" stroke-width="1.5"></path>
+</svg>
+</div>
+<div class="absolute bottom-1 w-full text-center text-[0.6rem] text-on-surface-variant font-mono">Output: Tenure vs Churn</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(116, 117, 125, 0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(116, 117, 125, 0.5); }
+    </style>
+</body></html>

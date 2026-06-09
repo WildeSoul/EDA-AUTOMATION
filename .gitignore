@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest and MyPy caches
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# Relational & Vector Databases (excluding demo files)
+*.db
+*.sqlite
+sessions.db
+chroma_db/
+data/chroma_db/
+data/*.db
+data/*.sqlite
+
+# Ignore uploaded datasets (allow data/demo)
+*.csv
+*.parquet
+*.xlsx
+*.xls
+!data/demo/*.csv
+!data/demo/*.parquet
+
+# IDE and System Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

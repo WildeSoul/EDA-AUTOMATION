@@ -1,0 +1,183 @@
+# DataAnalyst Pro — Professional-Grade Upgrade
+
+Upgrade the existing AI Data Analyst Pro from a solid EDA tool into an **interview-ready, recruiter-impressing** professional platform by adding the 6 critical features from the "Master Prompt."
+
+## Current State Assessment
+
+Your existing codebase is already **very strong** with:
+- ✅ Modular architecture (`analysis/`, `core/`, `tools/`, `ui/`, `config/`)
+- ✅ Streamlit + FastAPI dual interface
+- ✅ Shapiro-Wilk normality tests, Chi-Square, PCA, KMeans
+- ✅ Anomaly detection (Isolation Forest, Z-Score, IQR)
+- ✅ Quick ML modeling (RF, LR, XGBoost)
+- ✅ AI-powered Q&A with agentic pipeline
+- ✅ Code Lab, Report Export
+- ✅ Dark theme with Synthetix styling
+
+## What's Missing (The 6 "Interview Killers")
+
+These are the gaps that a technical interviewer would probe:
+
+| # | Feature | Why It Matters (Interview Answer) |
+|---|---------|----------------------------------|
+| 1 | **Universal File Support** (Parquet, JSON, multi-sheet Excel) | Shows you understand real-world data engineering |
+| 2 | **P-Value Correlation Matrix** | Proves you know correlation ≠ causation |
+| 3 | **High Cardinality Guard** | Shows you handle the "Curse of Dimensionality" |
+| 4 | **Data Leakage Prevention** (Sklearn Pipelines) | Critical ML concept — auto-fail without it |
+| 5 | **Data Health Score** (0-100) | Shows you can quantify data readiness |
+| 6 | **Interactive Plotly Charts** | Industry standard; Matplotlib = student-level |
+
+---
+
+## Proposed Changes
+
+### 1. Universal File Support
+
+> *"My tool supports Parquet, JSON, multi-sheet Excel — not just CSV."*
+
+#### [MODIFY] [sidebar.py](file:///c:/Users/laxmi/EDA%20automation/ui/sidebar.py)
+- Change file_uploader `type` from `["csv", "xlsx", "xls"]` to `["csv", "xlsx", "xls", "parquet", "json"]`
+
+#### [MODIFY] [app.py](file:///c:/Users/laxmi/EDA%20automation/app.py)
+- Expand `load_data()` to handle `.parquet` (via `pd.read_parquet`) and `.json` (via `pd.read_json`)
+- Add multi-sheet Excel detection: if `.xlsx` has multiple sheets, show a selectbox to pick one
+- Add data sampling: if file > 100MB (50,000+ rows), offer automatic sampling option
+
+#### [MODIFY] [server.py](file:///c:/Users/laxmi/EDA%20automation/server.py)
+- Expand `/api/upload` to handle Parquet and JSON formats
+- Add sheet selection parameter for Excel files
+
+#### [MODIFY] [requirements.txt](file:///c:/Users/laxmi/EDA%20automation/requirements.txt)
+- Add `pyarrow>=14.0.0` (for Parquet support)
+- Add `plotly>=5.18.0` (for interactive charts)
+
+---
+
+### 2. P-Value Validated Correlation Matrix
+
+> *"I added p-value validation to ensure automated insights are backed by statistical significance."*
+
+#### [MODIFY] [stats.py](file:///c:/Users/laxmi/EDA%20automation/analysis/stats.py)
+- Add new function `compute_correlation_with_pvalues(df, numeric_cols)` that:
+  - Computes Pearson correlation matrix
+  - Computes p-value matrix using `scipy.stats.pearsonr` for every pair
+  - Returns both matrices
+  - Adds Spearman correlation as alternative for non-normal data
+
+#### [MODIFY] [sections.py](file:///c:/Users/laxmi/EDA%20automation/ui/sections.py)
+- In `render_visualizations()` → Correlations tab:
+  - Replace simple heatmap with p-value annotated version
+  - Star (`*`) correlations where p < 0.05, double-star where p < 0.01
+  - Add "Confidence Score" column to the top correlations table
+  - Color non-significant correlations in grey
+
+---
+
+### 3. High Cardinality Guard
+
+> *"To prevent the Curse of Dimensionality, I implemented a threshold check."*
+
+#### [MODIFY] [features.py](file:///c:/Users/laxmi/EDA%20automation/analysis/features.py)
+- Add new function `detect_high_cardinality(df, categorical_cols, threshold=0.10)` that:
+  - Checks if unique values > 10% of total rows
+  - Returns a report: `{col: {unique_count, total_rows, ratio, recommendation}}`
+  - Recommendations: "Drop (likely ID)", "Target Encode", "Feature Hash"
+
+#### [MODIFY] [sections.py](file:///c:/Users/laxmi/EDA%20automation/ui/sections.py)
+- In `render_feature_engineering()`:
+  - Add high cardinality warning section after imputation
+  - Display flagged columns with warning badges
+  - Show recommendation for each flagged column
+
+#### [MODIFY] [server.py](file:///c:/Users/laxmi/EDA%20automation/server.py)
+- Add cardinality results to `/api/features/{sid}` response
+
+---
+
+### 4. Data Leakage Prevention (Sklearn Pipeline)
+
+> *"I used Scikit-Learn Pipelines to encapsulate transformers. The mean/std used for scaling is derived strictly from training data."*
+
+#### [MODIFY] [ml.py](file:///c:/Users/laxmi/EDA%20automation/analysis/ml.py)
+- Refactor `train_quick_model()` to use `sklearn.pipeline.Pipeline`:
+  - Wrap `StandardScaler` + model into a Pipeline
+  - Ensure `fit()` is only called on training split
+  - Remove the current manual `scaler.fit_transform(X)` before split (this is the leakage!)
+  - Add pipeline export capability (for the "Code Generation" feature)
+
+> [!WARNING]
+> **Current code has actual data leakage!** Line 118 in `ml.py` does `scaler.fit_transform(X)` on the entire dataset before `train_test_split`. This means test set statistics leak into training. The fix wraps everything in a Pipeline that fits only on training data.
+
+---
+
+### 5. Data Health Score (0-100)
+
+> *"A single score telling the user how ready the data is for ML."*
+
+#### [NEW] [health.py](file:///c:/Users/laxmi/EDA%20automation/analysis/health.py)
+- New module with `compute_data_health_score(df, numeric_cols, categorical_cols)` that scores:
+  - **Completeness** (25 pts): % non-null cells
+  - **Uniqueness** (20 pts): low duplicates + reasonable cardinality
+  - **Consistency** (20 pts): few type mismatches, valid ranges
+  - **Distribution** (20 pts): normality, low extreme skewness
+  - **Outlier Ratio** (15 pts): % of outliers via IQR
+- Returns: `{total_score, grade (A-F), breakdown, recommendations}`
+
+#### [MODIFY] [sections.py](file:///c:/Users/laxmi/EDA%20automation/ui/sections.py)
+- Add a prominent "Data Health Score" card at the top of `render_data_inspection()`
+- Show score as a gauge/donut chart with letter grade
+- Color-coded: Green (A-B), Yellow (C), Red (D-F)
+
+#### [MODIFY] [server.py](file:///c:/Users/laxmi/EDA%20automation/server.py)
+- Add health score to `/api/inspect/{sid}` response
+
+---
+
+### 6. Interactive Plotly Charts (Key Visualizations)
+
+> *"We use Plotly for interactivity so users can hover over data points."*
+
+#### [MODIFY] [sections.py](file:///c:/Users/laxmi/EDA%20automation/ui/sections.py)
+- Replace **key charts** with Plotly versions (keep Matplotlib for report export):
+  - Distribution tab: Plotly histogram with KDE overlay
+  - Correlation heatmap: Plotly heatmap with hover showing p-values
+  - Scatter plots in Advanced Analysis: Plotly scatter with hover
+  - Anomaly PCA projection: Plotly scatter with anomaly tooltips
+- Use `st.plotly_chart()` instead of `st.pyplot()` for these
+
+#### [MODIFY] [requirements.txt](file:///c:/Users/laxmi/EDA%20automation/requirements.txt)
+- Already covered above with `plotly>=5.18.0`
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Data Leakage Fix (Feature 4)**: Your current `ml.py` has a real data leakage bug — the scaler fits on the entire dataset before splitting. This fix will change ML results slightly (they'll be more honest). Do you want me to proceed?
+
+> [!IMPORTANT]
+> **Plotly Migration (Feature 6)**: I'll convert the 4 most impactful charts to Plotly while keeping Matplotlib for the HTML report export. This adds ~5MB to dependencies. OK?
+
+## Open Questions
+
+1. **Data Sampling Threshold**: When a file exceeds 100MB, should I auto-sample to 50K rows or show a dialog asking the user?
+2. **Parquet Compression**: Should I support all Parquet compression types (snappy, gzip, zstd) or just the default?
+3. **Target Encoding**: For high cardinality columns, should I actually apply Target Encoding automatically, or just flag and recommend?
+
+---
+
+## Verification Plan
+
+### Automated Tests
+1. Run `streamlit run app.py` and verify all 6 features load without errors
+2. Upload test files: CSV, Excel (multi-sheet), Parquet, JSON
+3. Verify p-value correlation shows significance stars
+4. Verify high cardinality warning appears for ID-like columns
+5. Verify ML pipeline uses proper train-only fitting (no leakage)
+6. Verify Data Health Score appears with correct breakdown
+7. Verify Plotly charts render with hover interactivity
+
+### Manual Verification
+- Use Kaggle's Titanic dataset (has missing values, mixed types, IDs)
+- Use a real estate dataset with high-cardinality zip codes
+- Compare ML metrics before/after leakage fix (scores should be slightly lower = more honest)

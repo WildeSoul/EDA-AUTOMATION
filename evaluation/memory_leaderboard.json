@@ -1,0 +1,8 @@
+{
+  "precision_at_1": 0.95,
+  "precision_at_3": 0.91,
+  "mrr": 0.97,
+  "contamination_failures": 0,
+  "retrieval_latency_ms": 120,
+  "last_updated": "2026-06-05T22:05:00Z"
+}

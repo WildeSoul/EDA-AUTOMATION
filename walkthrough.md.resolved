@@ -1,0 +1,59 @@
+# EDA Automation Enhancement — Walkthrough
+
+## What Changed
+
+All changes were made to [eda_automation.py](file:///c:/Users/laxmi/EDA%20automation/eda_automation.py) (expanded from ~1012 to ~1400 lines).
+
+### 1. MiniMax M2.7 Integration
+- **`minimax-m2.7:cloud`** is now the #1 priority model
+- Cloud models show ☁️ badge, local models show 💻 in sidebar
+- Separate timeout settings for cloud (120s) vs local (300s) models
+
+### 2. Advanced Statistical Tests (New Section)
+| Tab | Feature | What it does |
+|---|---|---|
+| 🔔 Normality | Shapiro-Wilk + D'Agostino tests | Tests if distributions are normal (✅/❌) |
+| 🔗 Chi-Square | Independence tests | Tests categorical variable independence with Cramér's V |
+| 📉 PCA | Principal Component Analysis | Explained variance chart + 2D scatter projection |
+| 🎯 Clustering | KMeans with auto-k | Elbow method + cluster scatter on PCA axes |
+
+### 3. Enhanced Benchmarking
+- Scores on 4 dimensions: **Speed**, **Specificity** (numbers/data refs), **Structure** (formatting), **Length**
+- **Composite score** with weighted formula
+- **Radar chart** comparing top models visually
+
+### 4. AI Auto-Summary *(new sidebar option)*
+- One-click executive summary: data quality grade, key patterns, recommendations, use cases, red flags
+- Cached per file — regenerate with button
+
+### 5. Multi-Model Consensus *(new sidebar option)*
+- Queries up to 3 models with same question
+- Shows individual responses in expanders
+- Synthesizes consensus highlighting agreements/disagreements
+
+### 6. Improved Prompting
+- **Chain-of-thought** structure: understand → identify → analyze → answer
+- Added **Confidence Level** section to responses
+- Enhanced system role with 7 explicit instructions
+
+### 7. Smart Context Management
+- Cloud models get 3000-char context, local get 2000-char
+- Automatic truncation to avoid model context window issues
+
+## Verification
+
+- ✅ App starts at `http://localhost:8501` with no errors
+- ✅ Dependencies (scipy, scikit-learn) were already installed
+- ✅ All 6 models detected including `minimax-m2.7:cloud`
+
+## New Sidebar Options
+
+```
+☑ 🔧 Auto Feature Engineering (default ON)
+☑ 📐 Advanced Statistical Tests (default ON)  ← NEW
+☐ 🤖 AI Auto-Summary                          ← NEW
+☐ 🏆 Benchmark Models
+☐ 🔀 Multi-Model Consensus                    ← NEW
+```
+python server.py
+streamlit run app.py
