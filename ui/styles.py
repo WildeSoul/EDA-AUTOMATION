@@ -206,7 +206,7 @@ def apply_styles():
             transform: translateY(-1px);
             box-shadow: 0 4px 16px rgba(151, 169, 255, 0.2);
         }
-        .stButton > button[kind="primary"] {
+        .stButton > button[kind="primary"], .stButton > button[type="primary"], [data-testid="baseButton-primary"] {
             background: linear-gradient(135deg, #97a9ff, #c99af8) !important;
             color: #002283 !important;
             border: none !important;

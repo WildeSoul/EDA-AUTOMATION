@@ -1292,7 +1292,7 @@ def render_agentic_orchestrator(df, sid, selected_model):
     col_plan, col_clear = st.columns([3, 1])
     
     # Compile button
-    if col_plan.button("Generate Execution Plan", kind="primary"):
+    if col_plan.button("Generate Execution Plan", type="primary"):
         if not query:
             st.error("Please enter a question or goal.")
         else:
@@ -1365,7 +1365,7 @@ def render_agentic_orchestrator(df, sid, selected_model):
         st.markdown("---")
         
         # Execute button
-        if st.button("🚀 Execute Agent Network", kind="primary"):
+        if st.button("🚀 Execute Agent Network", type="primary"):
             with st.spinner("⚡ Running LangGraph agent DAG execution..."):
                 s = db.get_session(sid)
                 intel = s.get("intelligence", {}) if s else {}
@@ -1397,7 +1397,7 @@ def render_agentic_orchestrator(df, sid, selected_model):
             )
             
             c_app, c_rej = st.columns(2)
-            if c_app.button("✅ APPROVE & RESUME", kind="primary"):
+            if c_app.button("✅ APPROVE & RESUME", type="primary"):
                 with st.spinner("Resuming execution from checkpoint..."):
                     engine = ExecutionEngine(db)
                     resumed_state = engine.resume_execution(sid, st.session_state.current_plan, df)

@@ -148,10 +148,15 @@ def render_image_dashboard(image_bytes: bytes, filename: str):
         st.subheader("📝 Optical Character Recognition (OCR)")
         st.markdown("Extracts embedded text from the image for downstream NLP analysis.")
         
+        if "ocr_text" not in st.session_state:
+            st.session_state.ocr_text = None
+
         if st.button("Run EasyOCR Pipeline"):
             with st.spinner("Running deep learning OCR pipeline..."):
-                ocr_text = run_ocr(image_bytes)
+                st.session_state.ocr_text = run_ocr(image_bytes)
                 
+        if st.session_state.ocr_text is not None:
+            ocr_text = st.session_state.ocr_text
             if ocr_text.strip() and not ocr_text.startswith("OCR Failed"):
                 st.success("Text extracted successfully!")
                 st.text_area("Extracted Text", ocr_text, height=150)
