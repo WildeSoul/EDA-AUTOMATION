@@ -227,7 +227,7 @@ else:
                 import uuid
                 from data.session_store import SessionStore
                 from data.intelligence import build_dataset_intelligence
-                from data.duckdb_engine import DuckDBEngine
+                from data.engine import DuckDBEngine
                 from data.memory_store import MemoryStore
                 
                 sid = str(uuid.uuid4())[:8]
