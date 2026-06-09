@@ -1179,13 +1179,22 @@ async function loadPersistedExecutionState() {
             const statusBadge = document.getElementById('autotrace-status-badge');
             const state = data.state;
             
-            statusBadge.textContent = state.status.charAt(0).toUpperCase() + state.status.slice(1);
+            statusBadge.textContent = state.status === 'awaiting_approval' ? 'Awaiting Approval' : state.status.charAt(0).toUpperCase() + state.status.slice(1);
             statusBadge.className = `px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                 state.status === 'completed' ? 'bg-primary/10 text-primary border-primary/20' :
                 state.status === 'failed' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                 state.status === 'executing' ? 'bg-secondary/10 text-secondary border-secondary/20 animate-pulse' :
+                state.status === 'awaiting_approval' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse' :
                 'bg-surface-container-high text-on-surface-variant'
             } border`;
+
+            // Toggle approval panel visibility
+            const approvalPanel = document.getElementById('approval-gate-panel');
+            if (state.status === 'awaiting_approval') {
+                if (approvalPanel) approvalPanel.classList.remove('hidden');
+            } else {
+                if (approvalPanel) approvalPanel.classList.add('hidden');
+            }
 
             renderTraceNodes(state.trace, state.outputs);
             
@@ -1334,14 +1343,22 @@ async function executePlan() {
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || 'Execution failed');
         
-        statusBadge.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
-        statusBadge.className = `px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-            data.status === 'completed' ? 'bg-primary/10 text-primary border-primary/20' :
-            'bg-red-500/10 text-red-400 border-red-500/20'
-        } border`;
-
-        renderTraceNodes(data.trace, data.outputs);
-        showToast(data.status === 'completed' ? 'Execution completed!' : 'Execution failed', data.status === 'completed' ? 'success' : 'error');
+        if (data.status === 'awaiting_approval') {
+            statusBadge.textContent = 'Awaiting Approval';
+            statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse border';
+            const approvalPanel = document.getElementById('approval-gate-panel');
+            if (approvalPanel) approvalPanel.classList.remove('hidden');
+            showToast('Execution paused. Plan requires manual approval.', 'info');
+        } else {
+            statusBadge.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+            statusBadge.className = `px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                data.status === 'completed' ? 'bg-primary/10 text-primary border-primary/20' :
+                'bg-red-500/10 text-red-400 border-red-500/20'
+            } border`;
+            const approvalPanel = document.getElementById('approval-gate-panel');
+            if (approvalPanel) approvalPanel.classList.add('hidden');
+            showToast(data.status === 'completed' ? 'Execution completed!' : 'Execution failed', data.status === 'completed' ? 'success' : 'error');
+        }
 
         const insightCard = document.getElementById('autotrace-insight-card');
         const reportContent = document.getElementById('autotrace-report-content');
@@ -1373,7 +1390,99 @@ async function executePlan() {
     }
 }
 
+async function approvePlan() {
+    if (!STATE.sessionId) return showToast('No active session', 'error');
+    const btn = document.getElementById('btn-approve-plan');
+    const rejectBtn = document.getElementById('btn-reject-plan');
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="material-symbols-outlined text-sm animate-spin">sync</span>Resuming...`;
+    }
+    if (rejectBtn) rejectBtn.disabled = true;
+
+    try {
+        const resp = await fetch(`${API}/api/sessions/${STATE.sessionId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan: STATE.currentPlan })
+        });
+        
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Approval failed');
+        
+        showToast('Plan approved! Resuming execution...', 'success');
+        
+        const approvalPanel = document.getElementById('approval-gate-panel');
+        if (approvalPanel) approvalPanel.classList.add('hidden');
+
+        const statusBadge = document.getElementById('autotrace-status-badge');
+        if (statusBadge) {
+            statusBadge.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+            statusBadge.className = `px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                data.status === 'completed' ? 'bg-primary/10 text-primary border-primary/20' :
+                'bg-red-500/10 text-red-400 border-red-500/20'
+            } border`;
+        }
+
+        renderTraceNodes(data.trace, data.outputs);
+        
+        const insightCard = document.getElementById('autotrace-insight-card');
+        const reportContent = document.getElementById('autotrace-report-content');
+        
+        let finalInsight = null;
+        if (data.outputs && data.outputs.recovery_insight) {
+            finalInsight = data.outputs.recovery_insight;
+        } else {
+            const insightStep = data.trace.find(t => t.agent === 'insight' && t.status === 'completed');
+            if (insightStep && data.outputs[insightStep.step_id]) {
+                finalInsight = data.outputs[insightStep.step_id];
+            }
+        }
+        
+        if (finalInsight && insightCard && reportContent) {
+            insightCard.classList.remove('hidden');
+            reportContent.innerHTML = formatMarkdownReport(finalInsight);
+        } else if (insightCard) {
+            insightCard.classList.add('hidden');
+        }
+
+    } catch (e) {
+        showToast(e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<span class="material-symbols-outlined text-sm font-bold" style="font-variation-settings:'FILL' 1">check_circle</span>APPROVE & RESUME`;
+        }
+        if (rejectBtn) rejectBtn.disabled = false;
+    }
+}
+
+async function rejectPlan() {
+    const approvalPanel = document.getElementById('approval-gate-panel');
+    if (approvalPanel) approvalPanel.classList.add('hidden');
+    
+    const statusBadge = document.getElementById('autotrace-status-badge');
+    if (statusBadge) {
+        statusBadge.textContent = 'Planned';
+        statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20';
+    }
+    
+    showToast('Plan rejected. You can adjust the goal and generate a new plan.', 'info');
+}
+
 function handlePlannerWebSocketEvent(event) {
+    if (event.event === 'awaiting_approval') {
+        const approvalPanel = document.getElementById('approval-gate-panel');
+        if (approvalPanel) approvalPanel.classList.remove('hidden');
+        const statusBadge = document.getElementById('autotrace-status-badge');
+        if (statusBadge) {
+            statusBadge.textContent = 'Awaiting Approval';
+            statusBadge.className = 'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse border';
+        }
+        showToast('Plan execution paused at Human Gate.', 'info');
+    }
+
     const stepId = event.step_id;
     const node = document.getElementById(`trace-node-${stepId}`);
     if (!node) return;
@@ -1708,6 +1817,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bind autotrace actions
     document.getElementById('btn-generate-plan').addEventListener('click', generatePlan);
     document.getElementById('btn-execute-plan').addEventListener('click', executePlan);
+    
+    // Bind approval gate actions
+    const btnApprove = document.getElementById('btn-approve-plan');
+    const btnReject = document.getElementById('btn-reject-plan');
+    if (btnApprove) btnApprove.addEventListener('click', approvePlan);
+    if (btnReject) btnReject.addEventListener('click', rejectPlan);
 
     // Bind memory actions
     const btnMemSearch = document.getElementById('btn-memory-search');
