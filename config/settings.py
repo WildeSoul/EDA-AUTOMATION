@@ -130,8 +130,19 @@ SYSTEM_ROLE = (
 )
 
 # ──────────────────────────────────────────────
-# Code Sandbox — allowed builtins for exec()
+# Code Sandbox — allowed builtins and governance limits
 # ──────────────────────────────────────────────
+SANDBOX_TIMEOUT_SECONDS = 30
+SANDBOX_MAX_MEMORY_MB = 512
+SANDBOX_MAX_STDOUT_BYTES = 50 * 1024       # 50 KB output cap
+SANDBOX_MAX_FIGURES = 10                   # Max 10 figures
+SANDBOX_MAX_RESULT_ROWS = 5000             # Max 5,000 preview rows
+SANDBOX_ALLOWED_MODULES = {
+    "builtins", "math", "datetime", "json", "re", "collections",
+    "itertools", "pandas", "numpy", "matplotlib", "seaborn",
+    "scipy", "sklearn", "warnings", "functools", "operator", "copy", "types",
+}
+
 SANDBOX_ALLOWED_BUILTINS = {
     "abs", "all", "any", "bool", "dict", "enumerate", "filter", "float",
     "format", "frozenset", "int", "isinstance", "issubclass", "iter",

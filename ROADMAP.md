@@ -9,7 +9,7 @@ This document highlights the historical progression of the AI Data Scientist pla
 ### Phase 1 — Dataset Intelligence & Core Agents
 - **Semantic Typing**: Fast heuristic column classification + LLM refinement.
 - **Relational Store**: Thread-safe SQLite database for session Parquet, chat history, and agent output persistence.
-- **DuckDB Integration**: compilation of Natural Language queries into executed DuckDB SQL.
+- **DuckDB Integration**: Compilation of Natural Language queries into executed DuckDB SQL.
 - **Worker Agents**: Created modular worker classes (`SchemaAgent`, `QualityAgent`, `HypothesisAgent`, `EDAAgent`, `InsightAgent`).
 
 ### Phase 1.5 — Hardening & Caching
@@ -28,21 +28,21 @@ This document highlights the historical progression of the AI Data Scientist pla
 - **Memory Confidence Gate**: Configurable threshold (`0.65`) preventing low-relevance memory injection.
 - **Lineage Graphs**: Automated tracking of dataset updates and relationships in SQLite.
 
+### Phase 4 — LangGraph Migration & SaaS UI Redesign (v4.0)
+- **StateGraph Core**: Replaced custom sequential execution loops with LangGraph's compiled `StateGraph` machine.
+- **Node Execution & Tracing**: Wrapped existing workers as nodes, running trace events over WebSocket streams.
+- **Parallel Executor**: Implemented python `ThreadPoolExecutor` nodes execution achieving ~20% execution latency speedup.
+- **SQLite Checkpointing & WAL Hardening**: Integrated thread-safe checkpointers in SQLite and hardened database connections with Write-Ahead Logging (WAL) and 30s timeouts.
+- **SaaS UI Redesign**: Re-engineered Streamlit application to a 5-route sidebar navigation, main ingestion Home workspace with demo catalog / session histories restore, and clean tabs layout.
+
 ---
 
 ## 🚀 Upcoming Phases
 
-### Phase 4 — LangGraph Migration (Next Step)
-- **StateGraph Core**: Replace the custom topological execution engine with LangGraph's `StateGraph`.
-- **Node Execution**: Wrap existing agents as LangGraph nodes.
-- **Conditional Routing**: Support conditional transitions (e.g. if quality tests fail, branch to cleaning node).
-- **Parallel execution**: Execute independent nodes concurrently in the graph.
-- **Node-level checkpoints**: Save intermediate states to SQLite to allow step-level rollbacks.
-
 ### Phase 5 — MLOps, Drift & Leakage Detection
-- **Data Drift Detection**: Implement Kolmogorov-Smirnov and Population Stability Index (PSI) tests to flag distribution drift.
+- **Data Drift Detection**: Implement Kolmogorov-Smirnov and Population Stability Index (PSI) tests to flag distribution drift over dataset versions.
 - **Leakage Guards**: Check for target leakage and features that correlation-leak label signals.
 
 ### Phase 6 — AutoML Scientist
-- **Pipeline Auto-generation**: Generate end-to-end training code using scikit-learn/XGBoost.
-- **Feature Importance**: Auto-compute SHAP feature importances.
+- **Pipeline Auto-generation**: Generate end-to-end model training code using scikit-learn/XGBoost based on target column evaluations.
+- **Explainability**: Auto-compute SHAP feature importances and validation metric scores.

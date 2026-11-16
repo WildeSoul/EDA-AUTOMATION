@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -52,6 +52,7 @@ from data.intelligence import build_dataset_intelligence
 from data.session_store import SessionStore
 from data.engine import DuckDBEngine
 from data.nl_sql import execute_nl_query
+from data.job_manager import job_manager
 from agents.router import route_request, run_agent_pipeline
 
 logger = logging.getLogger(__name__)
@@ -147,18 +148,33 @@ def get_session(sid: str) -> dict:
 @app.get("/api/models")
 def api_models():
     models = get_ollama_models()
+    valid_models = [m for m in models if m not in ("(no models found)", "(ollama not reachable)")]
+    
+    # 17 Model Master Catalog
+    catalog = list(PREFERRED_ORDER)
+    if "nomic-embed-text:latest" not in catalog:
+        catalog.append("nomic-embed-text:latest")
+    if "nvidia/nemotron-4-340b" not in catalog:
+        catalog.append("nvidia/nemotron-4-340b")
+        
+    source_list = valid_models if valid_models else catalog
+    default_model = valid_models[0] if valid_models else PREFERRED_ORDER[0]
+    
     return {
         "models": [
             {
                 "id": m,
                 "name": m.split(":")[0].replace("-", " ").title(),
-                "type": "cloud" if m in CLOUD_MODELS else "local",
+                "type": "cloud" if (m in CLOUD_MODELS or ":cloud" in m or "/" in m) else "local",
                 "tier": "frontier" if m in list(PREFERRED_ORDER)[:4] else
-                        "specialist" if m in CLOUD_MODELS else "local",
+                        "specialist" if (m in CLOUD_MODELS or ":cloud" in m or "/" in m) else "local",
+                "available": bool(not valid_models or m in valid_models),
             }
-            for m in models if m not in ("(no models found)", "(ollama not reachable)")
+            for m in source_list
         ],
-        "default": models[0] if models else None,
+        "default": default_model,
+        "ollama_connected": bool(valid_models),
+        "total_catalog": len(source_list),
     }
 
 
@@ -302,6 +318,8 @@ def api_inspect(sid: str):
         health = compute_data_health_score(df, s["numeric_cols"], s["categorical_cols"])
 
         return {
+            "session_id": sid,
+            "filename": s.get("filename", ""),
             "rows": len(df),
             "columns": len(df.columns),
             "duplicates": int(df.duplicated().sum()),
@@ -312,6 +330,7 @@ def api_inspect(sid: str):
             "numeric_count": len(s["numeric_cols"]),
             "categorical_count": len(s["categorical_cols"]),
             "health_score": health["total_score"],
+            "data_health_score": health["total_score"],
             "health_grade": health["grade"],
             "health_breakdown": {
                 cat: {"score": info["score"], "max": info["max"]}
@@ -643,17 +662,18 @@ def api_report(sid: str):
         nc = s["numeric_cols"]
         cc = s["categorical_cols"]
         html = generate_html_report(
-            df=df, filename=s["filename"],
+            df=df, filename=s["filename"], uploaded_name=s["filename"],
             numeric_cols=nc, categorical_cols=cc,
             engineered_features=s.get("engineered_features", []),
             imputation_report=s.get("imputation_report", {}),
             skew_df=s.get("skew_df", pd.DataFrame()),
             date_cols=s.get("date_cols", []),
-            ai_summary=None, anomaly_count=0, ml_results=None,
+            ai_summary=s.get("ai_summary", ""), anomaly_count=s.get("anomaly_count", 0), ml_results=s.get("ml_results", None),
         )
         return HTMLResponse(content=html, media_type="text/html",
                            headers={"Content-Disposition": f'attachment; filename="{s["filename"]}_report.html"'})
     except Exception as e:
+        logger.exception("Failed generating HTML report: %s", e)
         return JSONResponse(status_code=400, content={"error": str(e)})
 
 
@@ -809,19 +829,110 @@ async def api_quality_agent(sid: str):
         return JSONResponse(status_code=400, content={"error": str(e)})
 
 
+# ═══════════════════════════════════════════════
+# Phase 2 API: Persistent Job Manager & Cancellation
+# ═══════════════════════════════════════════════
+
+class CreateJobRequest(BaseModel):
+    session_id: str
+    job_type: str = "auto_eda"
+    idempotent: bool = True
+
+
+@app.post("/api/jobs/create")
+def api_create_job(req: CreateJobRequest):
+    try:
+        job = job_manager.create_job(req.session_id, req.job_type, idempotent=req.idempotent)
+        return job
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+
+@app.get("/api/jobs/{job_id}/status")
+def api_job_status(job_id: str):
+    try:
+        job = job_manager.get_job(job_id)
+        if not job:
+            return JSONResponse(status_code=404, content={"error": f"Job '{job_id}' not found"})
+        return job
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+def api_cancel_job(job_id: str):
+    try:
+        success = job_manager.cancel_job(job_id)
+        return {"job_id": job_id, "cancelled": success, "status": "cancelled"}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+
+@app.post("/api/cancel/{sid}")
+def api_cancel_session_jobs(sid: str):
+    try:
+        cancelled_ids = job_manager.cancel_session_jobs(sid)
+        return {"session_id": sid, "cancelled_jobs": cancelled_ids, "status": "cancelled"}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+
+@app.get("/api/jobs/session/{sid}")
+def api_get_session_jobs(sid: str):
+    try:
+        jobs = job_manager.get_active_jobs_for_session(sid)
+        return {"session_id": sid, "active_jobs": jobs}
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+
 @app.post("/api/analyze/{sid}")
-async def api_full_analysis(sid: str):
-    """Run the full agent pipeline: Schema → Quality → Hypothesis → EDA → Insight."""
+async def api_full_analysis(sid: str, job_id: str | None = None):
+    """Run the full agent pipeline: Schema → Quality → Hypothesis → EDA → Insight.
+
+    Integrates with SQLite JobManager for progress tracking and cooperative backend cancellation.
+    """
     try:
         s = get_session(sid)
         intelligence = s.get("intelligence", {})
         if not intelligence:
             return JSONResponse(status_code=400, content={"error": "No intelligence data. Re-upload the file."})
 
+        # Ensure active job tracking
+        if not job_id:
+            job_record = job_manager.create_job(sid, "auto_eda", idempotent=True)
+            job_id = job_record["job_id"]
+
+        cancel_event = job_manager.get_cancel_event(job_id)
+        job_manager.update_progress(job_id, 0, "routing", status="running")
+
         agents_to_run = route_request("full_analysis", intelligence)
+
+        def _progress_cb(stage_name: str, pct: int):
+            job_manager.update_progress(job_id, pct, stage_name, status="running")
+
         results = await asyncio.to_thread(
-            run_agent_pipeline, agents_to_run, intelligence, s["df"]
+            run_agent_pipeline,
+            agents_to_run,
+            intelligence,
+            s["df"],
+            cancel_event=cancel_event,
+            progress_callback=_progress_cb,
         )
+
+        # Check if pipeline was cancelled
+        if "_pipeline_cancelled" in results:
+            job_manager.cancel_job(job_id)
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "cancelled",
+                    "job_id": job_id,
+                    "completed_stages": results["_pipeline_cancelled"]["completed_stages"],
+                    "cancelled_at_stage": results["_pipeline_cancelled"]["cancelled_at_stage"],
+                }
+            )
+
         # Persist all agent results
         for agent_name, result in results.items():
             db.save_agent_result(sid, agent_name, result)
@@ -894,8 +1005,11 @@ async def api_full_analysis(sid: str):
         except Exception as persist_err:
             logger.warning("Failed to auto-persist agent results to memory: %s", persist_err)
 
+        job_manager.complete_job(job_id, result=results)
         return results
     except Exception as e:
+        if job_id:
+            job_manager.fail_job(job_id, str(e))
         return JSONResponse(status_code=400, content={"error": str(e)})
 
 
@@ -1745,10 +1859,15 @@ def api_memory_search(q: str, limit: int = 3):
         from core.embeddings import get_nomic_embedding
         store = MemoryStore()
         
+        count = store.col_datasets.count()
+        if count == 0:
+            return {"results": []}
+
+        n_results = min(limit, count)
         query_embedding = get_nomic_embedding(q)
         results = store.col_datasets.query(
             query_embeddings=[query_embedding],
-            n_results=limit,
+            n_results=n_results,
             include=["documents", "metadatas", "distances"]
         )
         
@@ -1807,6 +1926,14 @@ def api_memory_leaderboard():
         }
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": str(e)})
+
+
+# ═══════════════════════════════════════════════
+# Favicon (eliminates 404 in server logs)
+# ═══════════════════════════════════════════════
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
 
 
 # ═══════════════════════════════════════════════

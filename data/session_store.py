@@ -11,6 +11,7 @@ import io
 import json
 import logging
 import sqlite3
+import threading
 from typing import Any
 
 import pandas as pd
@@ -99,13 +100,20 @@ class SessionStore:
                      Defaults to ``SESSION_DB_PATH`` from project config.
         """
         self._db_path: str = db_path or SESSION_DB_PATH
+        self.lock = threading.RLock()
         try:
             self._conn = sqlite3.connect(
                 self._db_path,
+                timeout=30.0,
                 check_same_thread=False,
             )
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA foreign_keys = ON")
+            try:
+                self._conn.execute("PRAGMA journal_mode = WAL")
+                self._conn.execute("PRAGMA synchronous = NORMAL")
+            except sqlite3.Error as pragma_err:
+                logger.debug("Failed to set WAL/synchronous pragmas: %s", pragma_err)
             self._conn.executescript(_SCHEMA_SQL)
             self._conn.commit()
             logger.info("SessionStore initialised — db=%s", self._db_path)
@@ -113,13 +121,29 @@ class SessionStore:
             logger.error("Failed to initialise SessionStore: %s", exc)
             raise
 
+        # Dynamically wrap all public methods to be thread-safe using RLock
+        import functools
+        def thread_safe_wrap(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                with self.lock:
+                    return func(*args, **kwargs)
+            return wrapper
+
+        for attr_name in list(dir(self)):
+            if not attr_name.startswith("_") and attr_name not in ("lock",):
+                attr = getattr(self, attr_name)
+                if callable(attr) and attr_name != "close":
+                    setattr(self, attr_name, thread_safe_wrap(attr))
+
     def close(self) -> None:
         """Close the underlying database connection."""
-        try:
-            self._conn.close()
-            logger.info("SessionStore connection closed.")
-        except sqlite3.Error as exc:
-            logger.error("Error closing SessionStore: %s", exc)
+        with self.lock:
+            try:
+                self._conn.close()
+                logger.info("SessionStore connection closed.")
+            except sqlite3.Error as exc:
+                logger.error("Error closing SessionStore: %s", exc)
 
     # ── sessions ─────────────────────────────────────────────────────
 

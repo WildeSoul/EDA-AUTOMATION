@@ -8,6 +8,7 @@ No LangGraph — just clean if/else routing that's easy to migrate later.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 import pandas as pd
@@ -111,8 +112,13 @@ def run_agent_pipeline(
     df: pd.DataFrame | None = None,
     query: str = "",
     use_cache: bool = True,
+    cancel_event: Any | None = None,
+    progress_callback: Any | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Execute a pipeline of agents in order, passing results forward.
+
+    Supports cooperative cancellation via ``cancel_event`` and stage progress
+    reporting via ``progress_callback(stage_name, progress_pct)``.
 
     Args:
         agent_names: Ordered list of agent names to run.
@@ -120,13 +126,33 @@ def run_agent_pipeline(
         df: The DataFrame (required for quality and eda agents).
         query: Optional user question.
         use_cache: Whether to use agent caching.
+        cancel_event: Optional threading.Event signaling cancellation.
+        progress_callback: Optional callable(stage_name: str, pct: int).
 
     Returns:
         {agent_name: agent_result_dict} for all agents run.
     """
     results: dict[str, dict[str, Any]] = {}
+    total_stages = len(agent_names)
 
-    for name in agent_names:
+    for i, name in enumerate(agent_names):
+        # 1. Check cooperative cancellation before stage begins
+        if cancel_event is not None and cancel_event.is_set():
+            logger.info("Pipeline cancelled cooperatively before starting stage '%s'", name)
+            results["_pipeline_cancelled"] = {
+                "cancelled": True,
+                "cancelled_at_stage": name,
+                "completed_stages": list(results.keys()),
+            }
+            break
+
+        # 2. Report progress
+        if progress_callback:
+            try:
+                progress_callback(name, int((i / max(1, total_stages)) * 100))
+            except Exception as cb_err:
+                logger.debug("Progress callback failed: %s", cb_err)
+
         agent_cls = AGENT_REGISTRY.get(name)
         if agent_cls is None:
             logger.warning("Agent '%s' not found in registry, skipping", name)
@@ -193,5 +219,22 @@ def run_agent_pipeline(
                 "duration_sec": round(time.time() - start_time, 3),
                 "cached": False,
             }
+
+        # 3. Report progress after stage completion
+        if progress_callback:
+            try:
+                progress_callback(name, int(((i + 1) / max(1, total_stages)) * 100))
+            except Exception as cb_err:
+                logger.debug("Progress callback failed: %s", cb_err)
+
+        # 4. Check cooperative cancellation immediately after stage completes
+        if cancel_event is not None and cancel_event.is_set():
+            logger.info("Pipeline cancelled cooperatively after finishing stage '%s'", name)
+            results["_pipeline_cancelled"] = {
+                "cancelled": True,
+                "cancelled_at_stage": name,
+                "completed_stages": list(results.keys()),
+            }
+            break
 
     return results

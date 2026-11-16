@@ -9,20 +9,157 @@ const STATE = {
     models: [],
     filename: null,
     ws: null,
+    lastActiveSubpage: {
+        overview: 'upload',
+        analysis: 'profiling',
+        ml: 'ml',
+        copilot: 'workspace'
+    },
+    isAnalyzing: false,
+    autoEdaAbortController: null,
+    modelTierFilter: 'all',
+    modelSearchQuery: '',
 };
 
 const API = '';  // Same origin
 
 // ═══════════════════════════════════════════════
-// Router — Page Navigation
+// Router — Page Navigation & Workspace Hubs
 // ═══════════════════════════════════════════════
-function navigateTo(page) {
+
+const HUBS = {
+    overview: {
+        id: 'overview',
+        label: 'Dataset Overview',
+        defaultPage: 'upload',
+        pages: [
+            { id: 'upload', label: 'Ingest & Upload', icon: 'upload_file' },
+            { id: 'inspection', label: 'Health & Schema', icon: 'health_and_safety' },
+        ]
+    },
+    analysis: {
+        id: 'analysis',
+        label: 'Analysis & Visuals',
+        defaultPage: 'profiling',
+        pages: [
+            { id: 'profiling', label: 'Distributions & Profiling', icon: 'bar_chart' },
+            { id: 'analysis', label: 'PCA & Correlations', icon: 'scatter_plot' },
+        ]
+    },
+    ml: {
+        id: 'ml',
+        label: 'ML & Smart Labs',
+        defaultPage: 'ml',
+        pages: [
+            { id: 'ml', label: 'Predictive ML', icon: 'model_training' },
+            { id: 'anomaly', label: 'Anomaly Detection', icon: 'troubleshoot' },
+            { id: 'codelab', label: 'Python Code Lab', icon: 'terminal' },
+        ]
+    },
+    copilot: {
+        id: 'copilot',
+        label: 'AI Copilot & Insights',
+        defaultPage: 'workspace',
+        pages: [
+            { id: 'workspace', label: 'AI Chat & SQL', icon: 'forum' },
+            { id: 'autotrace', label: 'Auto-Analyst Trace', icon: 'route' },
+            { id: 'memory', label: 'Dataset Memory', icon: 'memory' },
+            { id: 'observability', label: 'Observability & Metrics', icon: 'monitoring' },
+        ]
+    }
+};
+
+function getHubForPage(pageId) {
+    for (const [hubKey, hub] of Object.entries(HUBS)) {
+        if (hub.pages.some(p => p.id === pageId)) {
+            return hubKey;
+        }
+    }
+    return 'overview';
+}
+
+function renderSubnavPills(hubKey, activePage) {
+    const hub = HUBS[hubKey] || HUBS.overview;
+    const container = document.getElementById('subnav-pills');
+    if (!container) return;
+
+    container.innerHTML = hub.pages.map(p => {
+        const isActive = p.id === activePage;
+        const activeClass = isActive ? 'active' : '';
+        return `<button class="sub-pill ${activeClass}" data-page="${p.id}" role="tab" aria-selected="${isActive}" onclick="navigateTo('${p.id}')">
+            <span class="material-symbols-outlined text-[15px]">${p.icon}</span>
+            <span>${p.label}</span>
+        </button>`;
+    }).join('');
+}
+
+function setActionButtonsEnabled(enabled) {
+    const reportBtn = document.getElementById('btn-download-report');
+    const headerEdaBtn = document.getElementById('btn-header-auto-eda');
+    const quickEdaBtn = document.getElementById('btn-quick-auto-eda');
+
+    [reportBtn, headerEdaBtn, quickEdaBtn].forEach(btn => {
+        if (!btn) return;
+        btn.disabled = !enabled;
+        if (enabled) {
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    });
+}
+
+function navigateTo(page, updateHash = true) {
+    // If navigating to a dataset-dependent page without a session, steer gently to upload
+    if (!STATE.sessionId && page !== 'upload' && page !== 'memory' && page !== 'observability') {
+        showToast('Upload a dataset or select a demo to view this page', 'info');
+        page = 'upload';
+    }
+
     document.querySelectorAll('.page-section').forEach(s => s.classList.add('hidden'));
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     const target = document.getElementById(`page-${page}`);
     if (target) target.classList.remove('hidden');
-    const link = document.querySelector(`[data-page="${page}"]`);
-    if (link) link.classList.add('active');
+
+    const hubKey = getHubForPage(page);
+    STATE.lastActiveSubpage[hubKey] = page;
+
+    // Update Desktop Sidebar Links
+    document.querySelectorAll('.nav-hub-link').forEach(l => {
+        const isHubActive = l.dataset.hub === hubKey;
+        if (isHubActive) {
+            l.classList.add('active');
+            l.setAttribute('aria-selected', 'true');
+        } else {
+            l.classList.remove('active');
+            l.setAttribute('aria-selected', 'false');
+        }
+    });
+
+    // Update Mobile Bottom Navigation
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+        const isHubActive = btn.dataset.hub === hubKey;
+        if (isHubActive) {
+            btn.classList.add('active', 'text-primary');
+            btn.classList.remove('text-on-surface-variant');
+            btn.setAttribute('aria-selected', 'true');
+        } else {
+            btn.classList.remove('active', 'text-primary');
+            btn.classList.add('text-on-surface-variant');
+            btn.setAttribute('aria-selected', 'false');
+        }
+    });
+
+    renderSubnavPills(hubKey, page);
+    closeMobileSidebar();
+
+    // Update URL hash and session persistence
+    if (updateHash) {
+        window.location.hash = `#/${hubKey}/${page}`;
+    }
+    try {
+        sessionStorage.setItem('eda_last_page', page);
+        sessionStorage.setItem('eda_last_hub', hubKey);
+    } catch (e) {}
 
     // Lazy-load data when navigating
     if (page === 'memory') {
@@ -37,18 +174,59 @@ function navigateTo(page) {
     }
 }
 
-document.getElementById('nav-links').addEventListener('click', (e) => {
-    const link = e.target.closest('.nav-link');
-    if (!link) return;
-    e.preventDefault();
-    const page = link.dataset.page;
-    if (!STATE.sessionId && page !== 'upload' && page !== 'memory' && page !== 'observability') {
-        showToast('Upload a file first', 'error');
+function onHubSelected(hubKey) {
+    const hub = HUBS[hubKey];
+    if (!hub) return;
+
+    let targetPage = STATE.lastActiveSubpage[hubKey] || hub.defaultPage;
+    if (hubKey === 'overview' && STATE.sessionId && targetPage === 'upload') {
+        targetPage = 'inspection';
+    }
+
+    if (!STATE.sessionId && targetPage !== 'upload' && targetPage !== 'memory' && targetPage !== 'observability') {
+        showToast('Upload a dataset or load a demo first', 'info');
         return;
     }
-    navigateTo(page);
-});
+    navigateTo(targetPage);
+}
 
+function handleHashRouting() {
+    const hash = window.location.hash || '';
+    if (hash.startsWith('#/')) {
+        const parts = hash.slice(2).split('/');
+        const pageId = parts[1];
+        if (pageId && document.getElementById(`page-${pageId}`)) {
+            navigateTo(pageId, false);
+            return;
+        }
+    }
+    const savedPage = sessionStorage.getItem('eda_last_page');
+    if (savedPage && document.getElementById(`page-${savedPage}`)) {
+        navigateTo(savedPage, false);
+    } else {
+        navigateTo('upload', false);
+    }
+}
+
+function openMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (sidebar) sidebar.classList.add('mobile-open');
+    if (backdrop) {
+        backdrop.classList.remove('hidden');
+        backdrop.classList.add('active');
+    }
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    if (backdrop) {
+        backdrop.classList.remove('active');
+        backdrop.classList.add('hidden');
+    }
+}
 
 // ═══════════════════════════════════════════════
 // Toast Notification
@@ -66,18 +244,26 @@ function showToast(msg, type = 'info') {
 
 
 // ═══════════════════════════════════════════════
-// Models — Load & Select
+// Models — Load, Filter & Select (17 Models UX)
 // ═══════════════════════════════════════════════
 async function loadModels() {
     try {
         const resp = await fetch(`${API}/api/models`);
         const data = await resp.json();
         STATE.models = data.models || [];
-        STATE.selectedModel = data.default;
+        const savedModel = sessionStorage.getItem('eda_selected_model');
+        if (savedModel && STATE.models.some(m => m.id === savedModel)) {
+            STATE.selectedModel = savedModel;
+        } else {
+            STATE.selectedModel = data.default || (STATE.models[0] ? STATE.models[0].id : null);
+        }
         renderModelList();
         updateTopbarModel();
     } catch (e) {
-        document.getElementById('model-list').innerHTML = `<div class="text-center text-error py-6">Failed to connect to Ollama. Make sure <code>ollama serve</code> is running.</div>`;
+        const container = document.getElementById('model-list');
+        if (container) {
+            container.innerHTML = `<div class="text-center text-error py-6">Failed to load models list.</div>`;
+        }
     }
 }
 
@@ -85,59 +271,153 @@ function renderModelList() {
     const container = document.getElementById('model-list');
     const modalList = document.getElementById('modal-model-list');
     if (!STATE.models.length) {
-        container.innerHTML = `<div class="text-center text-on-surface-variant py-6">No models available</div>`;
+        if (container) container.innerHTML = `<div class="text-center text-on-surface-variant py-6">No models available</div>`;
+        if (modalList) modalList.innerHTML = `<div class="text-center text-on-surface-variant py-6">No models available</div>`;
         return;
     }
-    document.getElementById('model-count-badge').textContent = `${STATE.models.length} Models Available`;
-    document.getElementById('model-count-display').textContent = STATE.models.length;
 
-    const html = STATE.models.map((m, i) => {
+    // Counts by tier
+    const countAll = STATE.models.length;
+    const countFrontier = STATE.models.filter(m => m.tier === 'frontier').length;
+    const countSpecialist = STATE.models.filter(m => m.tier === 'specialist').length;
+    const countLocal = STATE.models.filter(m => m.tier === 'local' || m.type === 'local').length;
+
+    const countBadge = document.getElementById('model-count-badge');
+    if (countBadge) countBadge.textContent = `${countAll} Models Available`;
+    const countDisplay = document.getElementById('model-count-display');
+    if (countDisplay) countDisplay.textContent = countAll;
+
+    const elCountAll = document.getElementById('count-tier-all');
+    if (elCountAll) elCountAll.textContent = countAll;
+    const elCountFrontier = document.getElementById('count-tier-frontier');
+    if (elCountFrontier) elCountFrontier.textContent = countFrontier;
+    const elCountSpecialist = document.getElementById('count-tier-specialist');
+    if (elCountSpecialist) elCountSpecialist.textContent = countSpecialist;
+    const elCountLocal = document.getElementById('count-tier-local');
+    if (elCountLocal) elCountLocal.textContent = countLocal;
+
+    // Filter by tier and search query
+    const query = (STATE.modelSearchQuery || '').toLowerCase().trim();
+    const tier = STATE.modelTierFilter || 'all';
+
+    const filtered = STATE.models.filter(m => {
+        if (tier === 'frontier' && m.tier !== 'frontier') return false;
+        if (tier === 'specialist' && m.tier !== 'specialist') return false;
+        if (tier === 'local' && m.tier !== 'local' && m.type !== 'local') return false;
+        if (query) {
+            const matchName = (m.name || '').toLowerCase().includes(query);
+            const matchId = (m.id || '').toLowerCase().includes(query);
+            const matchTier = (m.tier || '').toLowerCase().includes(query);
+            const matchType = (m.type || '').toLowerCase().includes(query);
+            return matchName || matchId || matchTier || matchType;
+        }
+        return true;
+    });
+
+    const renderItem = (m) => {
         const isSelected = m.id === STATE.selectedModel;
         const icon = m.type === 'cloud' ? 'cloud' : 'laptop_mac';
         const emoji = m.type === 'cloud' ? '☁️' : '💻';
         const tierBadge = m.tier === 'frontier' ? `<span class="px-2 py-0.5 bg-primary/20 text-primary text-[10px] uppercase tracking-wider rounded font-label font-bold">Frontier</span>` :
-                          m.tier === 'specialist' ? `<span class="px-2 py-0.5 bg-secondary/20 text-secondary text-[10px] uppercase tracking-wider rounded font-label font-bold">Specialist</span>` : '';
-        const bgClass = isSelected ? 'bg-surface-container-highest border-primary/20' : 'bg-surface-container-low hover:bg-surface-container border-transparent hover:border-outline-variant/30';
+                          m.tier === 'specialist' ? `<span class="px-2 py-0.5 bg-secondary/20 text-secondary text-[10px] uppercase tracking-wider rounded font-label font-bold">Specialist</span>` :
+                          `<span class="px-2 py-0.5 bg-tertiary/20 text-tertiary text-[10px] uppercase tracking-wider rounded font-label font-bold">Local</span>`;
+        const bgClass = isSelected ? 'bg-surface-container-highest border-primary/30 ring-1 ring-primary/30' : 'bg-surface-container-low hover:bg-surface-container border-transparent hover:border-outline-variant/30';
 
-        return `<div class="model-item ${bgClass} rounded-lg p-4 cursor-pointer flex items-center justify-between border transition-colors duration-200" data-model-id="${m.id}" onclick="selectModel('${m.id}')">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-surface rounded flex items-center justify-center border border-outline-variant/20 text-slate-400">
-                    <span class="material-symbols-outlined text-sm">${icon}</span>
+        return `<div class="model-item ${bgClass} rounded-xl p-3.5 cursor-pointer flex items-center justify-between border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
+            data-model-id="${m.id}"
+            role="option"
+            tabindex="0"
+            aria-selected="${isSelected}"
+            onclick="selectModel('${m.id}')"
+            onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectModel('${m.id}'); }">
+            <div class="flex items-center gap-3.5 min-w-0">
+                <div class="w-10 h-10 bg-surface rounded-xl flex items-center justify-center border border-outline-variant/20 text-slate-400 flex-shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">${icon}</span>
                 </div>
-                <div>
-                    <div class="flex items-center gap-2"><p class="text-sm font-headline font-semibold text-on-surface">${m.name}</p>${tierBadge}</div>
-                    <p class="text-xs text-on-surface-variant font-body">${emoji} ${m.type === 'cloud' ? 'Cloud' : 'Local'} • ${m.id}</p>
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                        <p class="text-sm font-headline font-semibold text-on-surface truncate">${m.name}</p>
+                        ${tierBadge}
+                    </div>
+                    <p class="text-xs text-on-surface-variant font-body truncate mt-0.5">${emoji} ${m.type === 'cloud' ? 'Cloud API' : 'Local Host'} • <span class="font-mono text-[11px] opacity-80">${m.id}</span></p>
                 </div>
             </div>
-            <div class="w-5 h-5 rounded-full border-2 ${isSelected ? 'border-primary' : 'border-outline-variant'} flex items-center justify-center">
+            <div class="w-5 h-5 rounded-full border-2 ${isSelected ? 'border-primary' : 'border-outline-variant/40'} flex items-center justify-center flex-shrink-0 ml-3">
                 ${isSelected ? '<div class="w-2.5 h-2.5 bg-primary rounded-full"></div>' : ''}
             </div>
         </div>`;
-    }).join('');
+    };
 
-    container.innerHTML = html;
+    const emptyHtml = `<div class="text-center text-on-surface-variant py-8">
+        <span class="material-symbols-outlined text-3xl opacity-40 mb-1">search_off</span>
+        <p class="text-sm">No models match "${query || tier}"</p>
+        <button class="mt-2 text-xs text-primary underline focus:outline-none" onclick="resetModelFilters()">Reset Filters</button>
+    </div>`;
+
+    const html = filtered.length ? filtered.map(renderItem).join('') : emptyHtml;
     if (modalList) modalList.innerHTML = html;
+    if (container) container.innerHTML = STATE.models.map(renderItem).join('');
 }
 
 function selectModel(modelId) {
     STATE.selectedModel = modelId;
+    try {
+        sessionStorage.setItem('eda_selected_model', modelId);
+    } catch(e) {}
     renderModelList();
     updateTopbarModel();
-    document.getElementById('model-modal').classList.add('hidden');
-    showToast(`Model: ${modelId}`, 'success');
+    closeModelModal();
+    showToast(`Active AI Model: ${modelId}`, 'success');
 }
 
 function updateTopbarModel() {
     const el = document.getElementById('topbar-model');
+    if (!el) return;
     const model = STATE.models.find(m => m.id === STATE.selectedModel);
     if (model) {
         el.textContent = `${model.name} (${model.type === 'cloud' ? 'Cloud' : 'Local'})`;
+    } else if (STATE.selectedModel) {
+        el.textContent = STATE.selectedModel;
     }
 }
 
-document.getElementById('model-selector-top').addEventListener('click', () => {
-    document.getElementById('model-modal').classList.remove('hidden');
-});
+function openModelModal() {
+    const modal = document.getElementById('model-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    const input = document.getElementById('model-search-input');
+    if (input) {
+        input.value = STATE.modelSearchQuery || '';
+        setTimeout(() => input.focus(), 60);
+    }
+    renderModelList();
+}
+
+function closeModelModal() {
+    const modal = document.getElementById('model-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function resetModelFilters() {
+    STATE.modelSearchQuery = '';
+    STATE.modelTierFilter = 'all';
+    const input = document.getElementById('model-search-input');
+    if (input) input.value = '';
+    const btnClear = document.getElementById('btn-clear-model-search');
+    if (btnClear) btnClear.classList.add('hidden');
+    document.querySelectorAll('.model-tier-btn').forEach(b => {
+        const isAll = b.dataset.tier === 'all';
+        b.classList.toggle('active', isAll);
+        if (isAll) {
+            b.classList.add('bg-primary/20', 'text-primary', 'border-primary/30');
+            b.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+        } else {
+            b.classList.remove('bg-primary/20', 'text-primary', 'border-primary/30');
+            b.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+        }
+    });
+    renderModelList();
+}
 
 
 // ═══════════════════════════════════════════════
@@ -168,11 +448,13 @@ async function uploadFile(file) {
         STATE.sessionId = data.session_id;
         STATE.filename = data.filename;
         document.getElementById('topbar-filename').textContent = data.filename;
+        try {
+            sessionStorage.setItem('eda_session_id', data.session_id);
+            sessionStorage.setItem('eda_filename', data.filename);
+        } catch (e) {}
 
-        // Enable report button
-        const reportBtn = document.getElementById('btn-download-report');
-        reportBtn.disabled = false;
-        reportBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        // Enable action buttons
+        setActionButtonsEnabled(true);
 
         // Populate ML target dropdown
         const allCols = [...(data.numeric_cols || []), ...(data.categorical_cols || [])];
@@ -635,16 +917,11 @@ document.getElementById('btn-gen-summary').addEventListener('click', async () =>
 // Report Download
 // ═══════════════════════════════════════════════
 document.getElementById('btn-download-report').addEventListener('click', () => {
-    if (!STATE.sessionId) return;
-    window.open(`${API}/api/report/${STATE.sessionId}`, '_blank');
-});
-
-
-// ═══════════════════════════════════════════════
-// Report Download
-// ═══════════════════════════════════════════════
-document.getElementById('btn-download-report').addEventListener('click', () => {
-    if (!STATE.sessionId) return;
+    if (!STATE.sessionId) {
+        showToast('Please upload a dataset first.', 'error');
+        return;
+    }
+    showToast('Exporting HTML report...', 'info');
     window.open(`${API}/api/report/${STATE.sessionId}`, '_blank');
 });
 
@@ -694,11 +971,13 @@ async function loadSession(sid, filename) {
     STATE.sessionId = sid;
     STATE.filename = filename;
     document.getElementById('topbar-filename').textContent = filename;
+    try {
+        sessionStorage.setItem('eda_session_id', sid);
+        sessionStorage.setItem('eda_filename', filename);
+    } catch (e) {}
     
-    // Enable report button
-    const reportBtn = document.getElementById('btn-download-report');
-    reportBtn.disabled = false;
-    reportBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    // Enable action buttons
+    setActionButtonsEnabled(true);
     
     // Populate ML target dropdown
     try {
@@ -726,9 +1005,11 @@ async function deleteSession(sid) {
             STATE.sessionId = null;
             STATE.filename = null;
             document.getElementById('topbar-filename').textContent = "No file loaded";
-            const reportBtn = document.getElementById('btn-download-report');
-            reportBtn.disabled = true;
-            reportBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            setActionButtonsEnabled(false);
+            try {
+                sessionStorage.removeItem('eda_session_id');
+                sessionStorage.removeItem('eda_filename');
+            } catch (e) {}
         }
         loadRecentSessions();
     } catch (e) {
@@ -1014,11 +1295,13 @@ async function loadDemoDataset(name) {
         STATE.sessionId = data.session_id;
         STATE.filename = data.filename;
         document.getElementById('topbar-filename').textContent = data.filename;
+        try {
+            sessionStorage.setItem('eda_session_id', data.session_id);
+            sessionStorage.setItem('eda_filename', data.filename);
+        } catch (e) {}
         
-        // Enable report button
-        const reportBtn = document.getElementById('btn-download-report');
-        reportBtn.disabled = false;
-        reportBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        // Enable action buttons
+        setActionButtonsEnabled(true);
         
         // Populate ML target dropdown
         const allCols = [...(data.numeric_cols || []), ...(data.categorical_cols || [])];
@@ -1806,17 +2089,298 @@ async function searchMemory() {
 
 
 // ═══════════════════════════════════════════════
+// Theme System (Light / Dark Mode)
+// ═══════════════════════════════════════════════
+function initTheme() {
+    const saved = localStorage.getItem('app-theme') || 'dark';
+    applyTheme(saved);
+
+    const toggleBtn = document.getElementById('btn-theme-toggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', () => {
+            const isLight = document.documentElement.classList.contains('light');
+            const next = isLight ? 'dark' : 'light';
+            applyTheme(next);
+            showToast(`Theme: ${next === 'light' ? 'Light' : 'Dark'} mode`, 'info');
+        });
+    }
+}
+
+function applyTheme(theme) {
+    const toggleBtn = document.getElementById('btn-theme-toggle');
+    const icon = toggleBtn ? toggleBtn.querySelector('.material-symbols-outlined') : null;
+    if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+        localStorage.setItem('app-theme', 'light');
+        if (icon) icon.textContent = 'dark_mode';
+    } else {
+        document.documentElement.classList.remove('light');
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('app-theme', 'dark');
+        if (icon) icon.textContent = 'light_mode';
+    }
+}
+
+
+// ═══════════════════════════════════════════════
+// One-Click Automated EDA Pipeline (Resilient & Cancellable)
+// ═══════════════════════════════════════════════
+async function cancelAutoEDA() {
+    if (STATE.autoEdaAbortController) {
+        STATE.autoEdaAbortController.abort();
+    }
+    if (STATE.sessionId) {
+        showToast('Cancelling Auto-EDA pipeline...', 'info');
+        try {
+            fetch(`${API}/api/cancel/${STATE.sessionId}`, { method: 'POST' }).catch(() => {});
+        } catch (e) {
+            console.error('Failed notifying backend cancellation:', e);
+        }
+    }
+}
+
+async function runCompleteAutoEDA() {
+    if (!STATE.sessionId) {
+        showToast('Upload a dataset or select a demo first', 'error');
+        return;
+    }
+    // Concurrency Lock
+    if (STATE.isAnalyzing) {
+        showToast('Auto-EDA is already running in background', 'info');
+        return;
+    }
+
+    STATE.isAnalyzing = true;
+    STATE.autoEdaAbortController = new AbortController();
+
+    const headerBtn = document.getElementById('btn-header-auto-eda');
+    const quickBtn = document.getElementById('btn-quick-auto-eda');
+    const origHeader = headerBtn ? headerBtn.innerHTML : '';
+    const origQuick = quickBtn ? quickBtn.innerHTML : '';
+
+    const runningHeaderHtml = `
+        <span class="material-symbols-outlined text-[15px] animate-spin">progress_activity</span>
+        <span>Analyzing...</span>
+        <button type="button" class="ml-1 text-[10px] font-bold uppercase underline hover:text-white" onclick="event.stopPropagation(); cancelAutoEDA();">Cancel</button>
+    `;
+    const runningQuickHtml = `
+        <span class="material-symbols-outlined text-[15px] animate-spin">progress_activity</span>
+        <span>Running Multi-Agent Pipeline...</span>
+        <button type="button" class="ml-2 text-[10px] font-bold uppercase underline hover:text-white bg-error/30 px-2 py-0.5 rounded" onclick="event.stopPropagation(); cancelAutoEDA();">Cancel</button>
+    `;
+
+    if (headerBtn) {
+        headerBtn.innerHTML = runningHeaderHtml;
+        headerBtn.disabled = false;
+        headerBtn.classList.remove('opacity-50');
+    }
+    if (quickBtn) {
+        quickBtn.innerHTML = runningQuickHtml;
+        quickBtn.disabled = false;
+        quickBtn.classList.remove('opacity-50');
+    }
+
+    showToast('⚡ Running Complete Auto-EDA Pipeline (Schema → Quality → EDA → Insights)...', 'info');
+
+    try {
+        // Step 1: Execute Full Multi-Agent Analysis Pipeline
+        const resp = await fetch(`${API}/api/analyze/${STATE.sessionId}`, {
+            method: 'POST',
+            signal: STATE.autoEdaAbortController.signal
+        });
+        if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            throw new Error(errData.error || `Analysis request failed with status ${resp.status}`);
+        }
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        if (data.status === 'cancelled') {
+            showToast('Auto-EDA pipeline cancelled by user', 'info');
+            return;
+        }
+
+        // Step 2: Await Feature Engineering with Shared Abort Signal & Error Validation
+        const fResp = await fetch(`${API}/api/features/${STATE.sessionId}`, {
+            method: 'POST',
+            signal: STATE.autoEdaAbortController.signal
+        });
+        if (!fResp.ok) {
+            const fErrData = await fResp.json().catch(() => ({}));
+            throw new Error(fErrData.error || `Feature engineering failed with status ${fResp.status}`);
+        }
+        const fData = await fResp.json();
+        if (fData.error) throw new Error(fData.error);
+
+        showToast('Auto-EDA Pipeline completed successfully!', 'success');
+        navigateTo('inspection');
+        if (typeof loadInspection === 'function') loadInspection();
+        if (typeof loadDatasetIntelligence === 'function') loadDatasetIntelligence();
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            showToast('Auto-EDA pipeline cancelled by user', 'info');
+        } else {
+            showToast(`Auto-EDA failed: ${e.message}`, 'error');
+            console.error('Auto-EDA Pipeline Failure:', e);
+        }
+    } finally {
+        STATE.isAnalyzing = false;
+        STATE.autoEdaAbortController = null;
+        if (headerBtn) {
+            headerBtn.innerHTML = origHeader;
+            headerBtn.disabled = !STATE.sessionId;
+        }
+        if (quickBtn) {
+            quickBtn.innerHTML = origQuick;
+            quickBtn.disabled = !STATE.sessionId;
+        }
+    }
+}
+
+async function initSessionRehydration() {
+    const savedSid = sessionStorage.getItem('eda_session_id');
+    const savedFilename = sessionStorage.getItem('eda_filename');
+    if (savedSid && savedFilename) {
+        try {
+            const resp = await fetch(`${API}/api/inspect/${savedSid}`);
+            if (resp.ok) {
+                const data = await resp.json();
+                if (!data.error) {
+                    STATE.sessionId = savedSid;
+                    STATE.filename = savedFilename;
+                    const topbarFilename = document.getElementById('topbar-filename');
+                    if (topbarFilename) topbarFilename.textContent = savedFilename;
+                    setActionButtonsEnabled(true);
+                    
+                    const allCols = data.dtypes ? data.dtypes.map(dt => dt.column) : [];
+                    const mlTarget = document.getElementById('ml-target');
+                    if (mlTarget && allCols.length) {
+                        mlTarget.innerHTML = allCols.map(c => `<option value="${c}">${c}</option>`).join('');
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Session rehydration skipped:', e);
+        }
+    }
+}
+
+
+// ═══════════════════════════════════════════════
 // Init
 // ═══════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    initTheme();
+    await initSessionRehydration();
     loadModels();
     loadRecentSessions();
     loadDemoDatasets();
     loadLeaderboard();
     
+    // Hash routing
+    window.addEventListener('hashchange', handleHashRouting);
+
+    // Desktop Hub Links click delegation
+    const navLinks = document.getElementById('nav-links');
+    if (navLinks) {
+        navLinks.addEventListener('click', (e) => {
+            const link = e.target.closest('.nav-hub-link');
+            if (!link) return;
+            e.preventDefault();
+            onHubSelected(link.dataset.hub);
+        });
+    }
+
+    // Mobile Bottom Navigation click delegation
+    const mobileBottomNav = document.getElementById('mobile-bottom-nav');
+    if (mobileBottomNav) {
+        mobileBottomNav.addEventListener('click', (e) => {
+            const btn = e.target.closest('.mobile-nav-btn');
+            if (!btn) return;
+            e.preventDefault();
+            onHubSelected(btn.dataset.hub);
+        });
+    }
+
+    // Mobile Sidebar Drawer controls
+    const btnMobileMenu = document.getElementById('btn-mobile-menu-toggle');
+    if (btnMobileMenu) btnMobileMenu.addEventListener('click', openMobileSidebar);
+
+    const btnSidebarClose = document.getElementById('btn-sidebar-close');
+    if (btnSidebarClose) btnSidebarClose.addEventListener('click', closeMobileSidebar);
+
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+    if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+
+    // Model Selector topbar & modal controls
+    const modelSelectorTop = document.getElementById('model-selector-top');
+    if (modelSelectorTop) {
+        modelSelectorTop.addEventListener('click', openModelModal);
+        modelSelectorTop.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModelModal(); }
+        });
+    }
+
+    const modelTierTabs = document.getElementById('model-tier-tabs');
+    if (modelTierTabs) {
+        modelTierTabs.addEventListener('click', (e) => {
+            const btn = e.target.closest('.model-tier-btn');
+            if (!btn) return;
+            STATE.modelTierFilter = btn.dataset.tier || 'all';
+            document.querySelectorAll('.model-tier-btn').forEach(b => {
+                const isTarget = b === btn;
+                b.classList.toggle('active', isTarget);
+                if (isTarget) {
+                    b.classList.add('bg-primary/20', 'text-primary', 'border-primary/30');
+                    b.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+                } else {
+                    b.classList.remove('bg-primary/20', 'text-primary', 'border-primary/30');
+                    b.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+                }
+            });
+            renderModelList();
+        });
+    }
+
+    const searchInput = document.getElementById('model-search-input');
+    const btnClearSearch = document.getElementById('btn-clear-model-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            STATE.modelSearchQuery = e.target.value;
+            if (btnClearSearch) btnClearSearch.classList.toggle('hidden', !e.target.value);
+            renderModelList();
+        });
+    }
+    if (btnClearSearch) {
+        btnClearSearch.addEventListener('click', () => {
+            if (searchInput) searchInput.value = '';
+            STATE.modelSearchQuery = '';
+            btnClearSearch.classList.add('hidden');
+            renderModelList();
+            searchInput?.focus();
+        });
+    }
+
+    // Global keyboard shortcuts (ESC closes modals & drawers)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeModelModal();
+            closeMobileSidebar();
+        }
+    });
+
+    // Bind Auto-EDA action buttons
+    const btnHeaderEda = document.getElementById('btn-header-auto-eda');
+    if (btnHeaderEda) btnHeaderEda.addEventListener('click', runCompleteAutoEDA);
+
+    const btnQuickEda = document.getElementById('btn-quick-auto-eda');
+    if (btnQuickEda) btnQuickEda.addEventListener('click', runCompleteAutoEDA);
+
     // Bind autotrace actions
-    document.getElementById('btn-generate-plan').addEventListener('click', generatePlan);
-    document.getElementById('btn-execute-plan').addEventListener('click', executePlan);
+    const btnGenPlan = document.getElementById('btn-generate-plan');
+    if (btnGenPlan) btnGenPlan.addEventListener('click', generatePlan);
+    const btnExecPlan = document.getElementById('btn-execute-plan');
+    if (btnExecPlan) btnExecPlan.addEventListener('click', executePlan);
     
     // Bind approval gate actions
     const btnApprove = document.getElementById('btn-approve-plan');
@@ -1840,7 +2404,8 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRefreshObs.addEventListener('click', loadObservabilityMetrics);
     }
 
-    navigateTo('upload');
+    // Resolve initial routing based on URL hash or stored session
+    handleHashRouting();
 });
 
 

@@ -1417,7 +1417,7 @@ def render_agentic_orchestrator(df, sid, selected_model):
         # Show trace nodes
         trace = exec_state.get("trace", [])
         if trace:
-            with st.expander("🔍 Real-time Execution Hops", expanded=True):
+            with st.expander("🔍 Real-time Execution Hops", expanded=False):
                 for step in trace:
                     step_id = step.get("step_id")
                     status_val = step.get("status", "pending")
@@ -1639,27 +1639,28 @@ def render_telemetry_observability():
     c4.metric("Checkpoint Restores", checkpoint_restores)
     
     st.markdown("---")
-    st.markdown("### ⚡ Specialist Agent Diagnostics")
-    agent_data = []
-    for agent, stats in agent_stats.items():
-        runs = stats["runs"]
-        success_rate = round(100.0 * (stats["successes"] / runs), 1) if runs > 0 else 0.0
-        avg_lat = round(sum(stats["durations"]) / len(stats["durations"]), 2) if stats["durations"] else 0.0
-        agent_data.append({
-            "Agent": agent.upper(),
-            "Runs": runs,
-            "Success Rate": f"{success_rate}%",
-            "Avg Latency": f"{avg_lat}s"
-        })
-    st.dataframe(pd.DataFrame(agent_data), width="stretch")
-    
-    st.markdown("---")
-    st.markdown("### 🕰️ Recent Executions Audit Trail")
-    st.dataframe(pd.DataFrame(recent_runs).head(10), width="stretch")
-    
-    st.markdown("---")
-    st.markdown("### 📊 Runtime Versions")
-    for ver, cnt in graph_versions.items():
-        pct = round(100.0 * (cnt / total_runs), 1)
-        st.markdown(f"**{ver}**: {cnt} run(s) ({pct}%)")
-        st.progress(pct / 100.0)
+    with st.expander("⚙️ Show Technical Diagnostics & Audit Trail", expanded=False):
+        st.markdown("### ⚡ Specialist Agent Diagnostics")
+        agent_data = []
+        for agent, stats in agent_stats.items():
+            runs = stats["runs"]
+            success_rate = round(100.0 * (stats["successes"] / runs), 1) if runs > 0 else 0.0
+            avg_lat = round(sum(stats["durations"]) / len(stats["durations"]), 2) if stats["durations"] else 0.0
+            agent_data.append({
+                "Agent": agent.upper(),
+                "Runs": runs,
+                "Success Rate": f"{success_rate}%",
+                "Avg Latency": f"{avg_lat}s"
+            })
+        st.dataframe(pd.DataFrame(agent_data), width="stretch")
+        
+        st.markdown("---")
+        st.markdown("### 🕰️ Recent Executions Audit Trail")
+        st.dataframe(pd.DataFrame(recent_runs).head(10), width="stretch")
+        
+        st.markdown("---")
+        st.markdown("### 📊 Runtime Versions")
+        for ver, cnt in graph_versions.items():
+            pct = round(100.0 * (cnt / total_runs), 1)
+            st.markdown(f"**{ver}**: {cnt} run(s) ({pct}%)")
+            st.progress(pct / 100.0)

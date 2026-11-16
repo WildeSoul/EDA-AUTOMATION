@@ -42,9 +42,14 @@ class SQLiteCheckpointer(BaseCheckpointSaver):
         else:
             from config.settings import SESSION_DB_PATH
             path = db_path or SESSION_DB_PATH
-            self.conn = sqlite3.connect(path, check_same_thread=False)
+            self.conn = sqlite3.connect(path, timeout=30.0, check_same_thread=False)
             self.conn.row_factory = sqlite3.Row
             self.conn.execute("PRAGMA foreign_keys = ON")
+            try:
+                self.conn.execute("PRAGMA journal_mode = WAL")
+                self.conn.execute("PRAGMA synchronous = NORMAL")
+            except sqlite3.Error as pragma_err:
+                logger.debug("Failed to set WAL/synchronous pragmas: %s", pragma_err)
             self._owned_conn = True
 
         self._create_tables()

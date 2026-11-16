@@ -66,16 +66,29 @@ def _generate_correlation_chart(df, numeric_cols) -> str:
 
 def generate_html_report(
     df: pd.DataFrame,
-    uploaded_name: str,
-    numeric_cols: list[str],
-    categorical_cols: list[str],
-    ai_summary: str = "",
+    uploaded_name: str = "",
+    numeric_cols: list[str] | None = None,
+    categorical_cols: list[str] | None = None,
+    ai_summary: str | None = "",
     anomaly_count: int = 0,
     ml_results: dict | None = None,
+    filename: str = "",
+    engineered_features: list | None = None,
+    imputation_report: dict | None = None,
+    skew_df: pd.DataFrame | None = None,
+    date_cols: list | None = None,
+    **kwargs,
 ) -> str:
     """Generate a comprehensive styled HTML report."""
 
+    dataset_name = filename or uploaded_name or "Dataset"
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    ai_summary = ai_summary or ""
+
+    if numeric_cols is None:
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    if categorical_cols is None:
+        categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
 
     # Data overview stats
     n_rows, n_cols = df.shape
@@ -117,24 +130,68 @@ def generate_html_report(
             })
         cat_html = pd.DataFrame(cat_data).to_html(index=False, classes="data-table")
 
+    # Engineered Features
+    eng_html = ""
+    if engineered_features:
+        eng_items = "".join(f"<div class='stat-card' style='padding: 10px; font-size: 0.9em;'><code>{feat}</code></div>" for feat in engineered_features)
+        eng_html = f"""
+        <h2>⚙️ Engineered Features ({len(engineered_features)})</h2>
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+            {eng_items}
+        </div>
+        """
+
+    # Imputation Report
+    imp_html = ""
+    if imputation_report and isinstance(imputation_report, dict):
+        imputed_cols = imputation_report.get("imputed_columns") or {}
+        if imputed_cols:
+            rows = []
+            for col_name, info in imputed_cols.items():
+                strategy = info.get("strategy", "imputed") if isinstance(info, dict) else str(info)
+                fill_val = info.get("fill_value", "N/A") if isinstance(info, dict) else ""
+                rows.append(f"<tr><td><code>{col_name}</code></td><td>{strategy}</td><td>{fill_val}</td></tr>")
+            if rows:
+                imp_html = f"""
+                <h2>🛠️ Missing Value Imputation</h2>
+                <table class="data-table">
+                    <thead><tr><th>Column</th><th>Strategy</th><th>Fill Value</th></tr></thead>
+                    <tbody>{"".join(rows)}</tbody>
+                </table>
+                """
+
+    # Date Columns Info
+    date_html = ""
+    if date_cols:
+        d_items = ", ".join(f"<code>{d}</code>" for d in date_cols)
+        date_html = f"<p style='margin: 10px 0;'><strong>Temporal Columns Detected:</strong> {d_items}</p>"
+
+    # Skewness Analysis
+    skew_html = ""
+    if skew_df is not None and isinstance(skew_df, pd.DataFrame) and not skew_df.empty:
+        skew_html = f"""
+        <h2>📐 Distribution Skewness</h2>
+        {skew_df.to_html(index=False, classes="data-table")}
+        """
+
     # ML results section
     ml_html = ""
     if ml_results and ml_results.get("success"):
-        if ml_results["task_type"] == "classification":
+        if ml_results.get("task_type") == "classification":
             ml_html = f"""
             <h2>🤖 ML Model Results</h2>
-            <p><strong>Model:</strong> {ml_results['model_name']} (Classification)</p>
-            <p><strong>Accuracy:</strong> {ml_results['accuracy']}</p>
-            <p><strong>F1 Score:</strong> {ml_results['f1_score']}</p>
-            <p><strong>CV Score:</strong> {ml_results['cv_mean']} ± {ml_results['cv_std']}</p>
+            <p><strong>Model:</strong> {ml_results.get('model_name', 'Model')} (Classification)</p>
+            <p><strong>Accuracy:</strong> {ml_results.get('accuracy', 'N/A')}</p>
+            <p><strong>F1 Score:</strong> {ml_results.get('f1_score', 'N/A')}</p>
+            <p><strong>CV Score:</strong> {ml_results.get('cv_mean', 'N/A')} ± {ml_results.get('cv_std', 'N/A')}</p>
             """
         else:
             ml_html = f"""
             <h2>🤖 ML Model Results</h2>
-            <p><strong>Model:</strong> {ml_results['model_name']} (Regression)</p>
-            <p><strong>R² Score:</strong> {ml_results['r2']}</p>
-            <p><strong>RMSE:</strong> {ml_results['rmse']}</p>
-            <p><strong>CV Score:</strong> {ml_results['cv_mean']} ± {ml_results['cv_std']}</p>
+            <p><strong>Model:</strong> {ml_results.get('model_name', 'Model')} (Regression)</p>
+            <p><strong>R² Score:</strong> {ml_results.get('r2', 'N/A')}</p>
+            <p><strong>RMSE:</strong> {ml_results.get('rmse', 'N/A')}</p>
+            <p><strong>CV Score:</strong> {ml_results.get('cv_mean', 'N/A')} ± {ml_results.get('cv_std', 'N/A')}</p>
             """
 
     html = f"""<!DOCTYPE html>
@@ -142,7 +199,7 @@ def generate_html_report(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EDA Report — {uploaded_name}</title>
+    <title>EDA Report — {dataset_name}</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
@@ -195,12 +252,13 @@ def generate_html_report(
         img {{ border-radius: 8px; margin: 15px 0; }}
         .footer {{ text-align: center; color: #666; margin-top: 40px; padding-top: 20px;
                    border-top: 1px solid #2a2d3a; }}
+        code {{ background: #2a2d3a; color: #a5b4fc; padding: 2px 6px; border-radius: 4px; }}
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📊 EDA Report</h1>
-        <p class="meta">Dataset: <strong>{uploaded_name}</strong> | Generated: {now}</p>
+        <p class="meta">Dataset: <strong>{dataset_name}</strong> | Generated: {now}</p>
 
         <h2>📋 Data Overview</h2>
         <div class="stats-grid">
@@ -212,9 +270,17 @@ def generate_html_report(
             <div class="stat-card"><div class="value">{anomaly_count}</div><div class="label">Anomalies Detected</div></div>
         </div>
 
+        {date_html}
+
         {"<h2>⚠️ Missing Values</h2>" + missing_html if missing_html else ""}
 
+        {imp_html}
+
         {"<h2>📈 Descriptive Statistics</h2>" + desc_html if desc_html else ""}
+
+        {skew_html}
+
+        {eng_html}
 
         {"<h2>📊 Distributions</h2>" + dist_chart if dist_chart else ""}
 

@@ -26,6 +26,10 @@ import agents.planner_agent
 from core.plan_validator import validate_plan
 from core.langgraph_engine import build_langgraph_engine, AgentState, execute_single_step
 from langgraph.errors import NodeInterrupt
+try:
+    from langgraph.errors import GraphInterrupt
+except ImportError:
+    GraphInterrupt = NodeInterrupt
 
 logger = logging.getLogger(__name__)
 
@@ -347,7 +351,7 @@ class ExecutionEngine:
             return final_state
 
         except Exception as exc:
-            if isinstance(exc, NodeInterrupt):
+            if isinstance(exc, (NodeInterrupt, GraphInterrupt)):
                 logger.info("LangGraph execution paused for human approval.")
                 try:
                     state_val = graph.get_state(config).values
@@ -415,7 +419,7 @@ class ExecutionEngine:
             return final_state
 
         except Exception as exc:
-            if isinstance(exc, NodeInterrupt):
+            if isinstance(exc, (NodeInterrupt, GraphInterrupt)):
                 logger.info("LangGraph execution paused again for human approval.")
                 try:
                     state_val = graph.get_state(config).values

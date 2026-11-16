@@ -129,16 +129,74 @@ Return ONLY valid JSON."""
                 confidence=0.85,
             )
 
-        except json.JSONDecodeError as exc:
-            logger.warning("Schema agent: invalid JSON from LLM: %s", exc)
+        except (json.JSONDecodeError, Exception) as exc:
+            logger.warning("Schema agent LLM call failed or returned invalid JSON (%s); using heuristic schema analysis.", exc)
+            fallback = self._build_heuristic_analysis(intelligence)
+            evidence = [
+                f"Modeling advice generated for {len(fallback['modeling_advice'])} columns",
+                f"Target recommendation: {fallback.get('recommended_target') or 'None'}",
+            ]
             return self._make_result(
-                success=False,
-                error=f"LLM returned invalid JSON: {exc}",
-                confidence=0.0,
+                success=True,
+                result=fallback,
+                evidence=evidence,
+                confidence=0.75,
             )
-        except Exception as exc:
-            logger.error("Schema agent failed: %s", exc)
-            return self._make_result(
-                success=False,
-                error=str(exc),
-            )
+
+    def _build_heuristic_analysis(self, intelligence: dict[str, Any]) -> dict[str, Any]:
+        """Deterministic rule-based schema analysis when LLM is unavailable."""
+        columns = intelligence.get("columns", {})
+        col_names = list(columns.keys())
+        target = intelligence.get("target_column") or (intelligence.get("target_candidates", [None])[0] if intelligence.get("target_candidates") else None)
+        relationships = []
+        modeling_advice = []
+        data_type_fixes = []
+
+        for name, meta in columns.items():
+            sem = meta.get("semantic_type", "")
+            dtype = meta.get("dtype", "")
+            null_pct = meta.get("missing_pct", meta.get("null_pct", 0.0))
+
+            if null_pct > 50:
+                modeling_advice.append({
+                    "column": name,
+                    "action": "drop",
+                    "reason": f"High missing rate ({null_pct:.1f}%)",
+                    "code_hint": f"df = df.drop(columns=['{name}'])"
+                })
+            elif sem in ("identifier", "id") or meta.get("is_identifier"):
+                modeling_advice.append({
+                    "column": name,
+                    "action": "drop",
+                    "reason": "Identifier column with high uniqueness has no predictive value",
+                    "code_hint": f"df = df.drop(columns=['{name}'])"
+                })
+            elif sem in ("category", "categorical", "binary", "binary_target"):
+                modeling_advice.append({
+                    "column": name,
+                    "action": "encode",
+                    "reason": "Categorical feature needs encoding for ML modeling",
+                    "code_hint": f"df = pd.get_dummies(df, columns=['{name}'], drop_first=True)"
+                })
+            elif dtype == "object" and sem not in ("text", "identifier"):
+                data_type_fixes.append({
+                    "column": name,
+                    "current": "object",
+                    "suggested": "category",
+                    "fix_code": f"df['{name}'] = df['{name}'].astype('category')"
+                })
+
+        if not target and col_names:
+            for c in col_names:
+                if any(w in c.lower() for w in ("churn", "target", "label", "outcome", "status", "price", "revenue")):
+                    target = c
+                    break
+
+        return {
+            "relationships": relationships,
+            "modeling_advice": modeling_advice,
+            "recommended_target": target,
+            "recommended_target_reason": f"Selected '{target}' based on domain target heuristics" if target else "No clear target column detected",
+            "data_type_fixes": data_type_fixes,
+            "summary": f"Heuristic schema analysis evaluated {len(col_names)} columns. Target: {target or 'None'}."
+        }

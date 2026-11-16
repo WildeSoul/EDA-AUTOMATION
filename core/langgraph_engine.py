@@ -14,6 +14,13 @@ import concurrent.futures
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple, Set
 
+import warnings
+try:
+    from langgraph.errors import LangGraphDeprecatedSinceV10
+    warnings.filterwarnings("ignore", category=LangGraphDeprecatedSinceV10)
+except ImportError:
+    pass
+
 from langgraph.graph import StateGraph, START, END
 from langgraph.errors import NodeInterrupt
 from langgraph.checkpoint.base import get_checkpoint_id
@@ -215,7 +222,9 @@ def approval_node(state: AgentState, config: RunnableConfig) -> AgentState:
         return state
 
     logger.warning("Interrupted execution: awaiting human approval.")
-    raise NodeInterrupt("Plan requires human approval. Confirm or adjust the plan to proceed.")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        raise NodeInterrupt("Plan requires human approval. Confirm or adjust the plan to proceed.")
 
 
 def executor_node(state: AgentState, config: RunnableConfig) -> AgentState:
